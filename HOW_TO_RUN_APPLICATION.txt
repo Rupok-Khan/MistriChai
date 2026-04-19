@@ -1,0 +1,137 @@
+HOW TO RUN THIS APPLICATION
+
+Project Root:
+e:\CSE\9th\project\ondemand
+
+-----------------------------------
+1. REQUIREMENTS
+-----------------------------------
+
+- Node.js installed
+- XAMPP installed and Apache + MySQL running
+- Database name: technician_app
+
+
+-----------------------------------
+2. DATABASE SETUP
+-----------------------------------
+
+1. Open XAMPP Control Panel
+2. Start MySQL
+3. Open phpMyAdmin
+4. Create a database named:
+   technician_app
+5. Import this file:
+   server\schema.sql
+
+
+-----------------------------------
+3. BACKEND RUN
+-----------------------------------
+
+Backend folder:
+e:\CSE\9th\project\ondemand\server
+
+Command:
+npm run dev
+
+Backend URL:
+http://localhost:5000
+
+Health check:
+http://localhost:5000/api/health
+
+
+-----------------------------------
+4. FRONTEND RUN
+-----------------------------------
+
+Frontend folder:
+e:\CSE\9th\project\ondemand\client
+
+Command:
+npm run dev
+
+Frontend URL:
+http://localhost:5173
+
+
+-----------------------------------
+5. ENV FILES
+-----------------------------------
+
+Backend env file:
+server\.env
+
+Frontend env file:
+client\.env
+
+Current important backend env values:
+- PORT=5000
+- DB_HOST=localhost
+- DB_USER=root
+- DB_PASSWORD=
+- DB_NAME=technician_app
+- CORS_ORIGIN=http://localhost:5173
+
+Current frontend env value:
+- VITE_API_URL=http://localhost:5000
+
+
+-----------------------------------
+6. ADMIN LOGIN
+-----------------------------------
+
+Admin login page:
+http://localhost:5173/admin/login
+
+Admin credentials are set in:
+server\.env
+
+Current admin email:
+admin@ondemand.com
+
+Current admin password:
+Admin@12345
+
+
+-----------------------------------
+7. CUSTOMER AND PARTNER
+-----------------------------------
+
+Customer auth page:
+http://localhost:5173/auth/customer/login
+
+Partner auth page:
+http://localhost:5173/auth/partner/login
+
+Main app home page:
+http://localhost:5173
+
+
+-----------------------------------
+8. IF SOMETHING DOES NOT WORK
+-----------------------------------
+
+- Make sure XAMPP MySQL is running
+- Make sure database technician_app exists
+- Make sure server\schema.sql is imported
+- Make sure backend is running on port 5000
+- Make sure frontend is running on port 5173
+- Restart both frontend and backend after changing .env or schema
+
+
+-----------------------------------
+9. QUICK START
+-----------------------------------
+
+Terminal 1:
+cd e:\CSE\9th\project\ondemand\server
+npm run dev
+
+Terminal 2:
+cd e:\CSE\9th\project\ondemand\client
+npm run dev
+
+Then open:
+http://localhost:5173

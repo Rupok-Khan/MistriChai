@@ -1,0 +1,24 @@
+customer browse website ..visit category wise technician...they can see avalabile  technician..location and technician available time(available time fixed by the techinician from their dash board.when a technician assign a job he web site automatic doing status busy. After complete job he will be free..when a job completed techinican must be doing status done or free for next work..if all techinican is busy in a location within a day..customer can book a busy techinician...we contact with technician  after his job done then we assign him next ordered job...if any how techinician not find or we can't give techinincan  ..booking money will be returned to the customer. ), ...then they book a techinician with giving platform charge.then platform assign the technician to the customer...then customer can live chat with technician..after job done customer can payment full cash  to the technician...for cash technician takes full payment and done job completed.
+
+we work for 5 technican catagory 
+1.ac repare,feize repare.
+2.water line.
+3.gas cula.
+4.home cleaning.
+5.home electronic(tv,fan,light,electrc line).
+
+
+
+...workfolw../
+tecnician registration....in website there have a option to register as a partner...partner register must include this infomation....name,mobile number,email(not mandatory),father name,mother name,addreess(nid card wise.),photo,working time,nid card photo,nid number,thana,district,word number (if in city coorperation fill up a city coorperation name.or if in union porisod then give union name.)....after submit application... platform verify it within 24 hour....the in paltform admin dash board show this information ..platform show and accepect ..after accpect automatic a login password and username send to the mobile number...partner can log in with this...after log in partner must have complite profile...
+..in partner dashboard  ther have some option to doing (profile option for edit profile with name ,address ,nid number,and photo,email etc...partner also have a uniqe partner codeor id which is like name is Rupok Khan id will ne RK**** star means any 4 digit number ..6 digit id number  1st two is letter form first name 1st letter and 2nd is last name 1st leterr and 4 digit automaic generated..this id is automatic generated when a partner approved by platform....then have security option to change password.....then wallet for showing balance and withdraw balance...also have a order option ...in order option partner see the curent order  here he can give status done or complite job after doing a job done.and updated to the user webpage  and platform dashboard automaic...theri also have order history..change working time.....(there must have a live chat option with customer...when partner get a job...automatic arise it after assign a job....its direct comunication to partner and customer...).
+
+
+2nd workfolw is in user home page or dash board,..
+
+user must have signup first with email ,google account,phone numbeer...then he can search job catagory wise...he can see the avaliable technician or partner in this catagry location wise...if he chose a techniicain...book him..for booking customer have to fill up a short form for which service or what problem he have,,,then he place order with minimun charge or paltrom fee payment complite...then he have a opion his dashboard..to live chat with technician..after platform assign this techinican....in customer dashboard theri must have some option like (profile,password change,order,prevoius order,payment history,and live chat option to assign techinican..(live chat  option arise when he book a techinican after assign techinican by the platform..))..
+
+
+3rd wrok folw in admin or platform dash board..
+
+platform have all access to control it...payment refund,partner assign ,partner registration approve....balance transfer to the parner..

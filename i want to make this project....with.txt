@@ -1,0 +1,61 @@
+i want to make this project....with node js ,express js,my sql database,raw and bootstrap css..........analyze it and give me full website structure...and pages,,and functionality
+
+
+
+
+
+
+
+i want to make 1st stage  a home page,about page,contact page,services page, and login and signup page...in login signup page there have two option customer login and partner login...customar has different dashboard and parner has differnet dashbpard...customer sign up with,name,email,mobile number,address, and login with email/mobile number and password....and partner sign up with name(first name and last name as nid card),mobile number,email optional,address (as nid card),nid card photo front and back ..parther profile photo,father name ,mother name,Current Service Area:
+
+District and Thana: For broad regional filtering.
+
+Ward Number: For hyper-local service assignment.
+
+City Corporation / Union Name: Specific details based on the technician's actual operating location.,Professional Details (Service Security)
+This ensures the technician is assigned to the correct job categories and manages expectations regarding availability.
+
+Technician Category: Selection from the 5 core types (e.g., AC Repair, Plumbing, etc.).
+
+Working Time/Hours: Partner must set their daily availability so the system can correctly show them as "Available" or "Busy".
+
+
+Experience Level: Number of years in the trade (helps with the rating/trust logic).
+
+4. Verification Documents (The Security Core)
+These documents are reviewed by the Admin within 24 hours to prevent fraud.
+
+
+
+NID Number: Unique identifier for official verification.
+
+NID Card Photos: Clear images of both the front and back of the NID.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
