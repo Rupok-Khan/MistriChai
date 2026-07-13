@@ -3,6 +3,7 @@ const SiteSettings = require("../models/siteSettings.model");
 exports.getPublicSettings = async (req, res, next) => {
   try {
     const data = await SiteSettings.getAllSettings();
+    data.services = (data.services || []).filter((service) => service.active !== false);
     if (data.preferences?.language === "BANGLA") {
       data.home = { ...data.home, heroKicker:"ন্যায্য মূল্যে মানসম্মত সেবা", heroTitle:"দক্ষ, দ্রুত ও বিশ্বস্ত ঘরোয়া সেবা", heroSubtitle:"যাচাইকৃত সেবাদাতার মাধ্যমে এসি মেরামত, পানির লাইন, গ্যাসের চুলা, ঘর পরিষ্কার ও বৈদ্যুতিক সেবা সহজে বুক করুন।", primaryButtonText:"এখনই শুরু করুন", secondaryButtonText:"সব সেবা দেখুন", heroImageAlt:"দক্ষ সেবাদাতা", badgeOne:"যাচাইকৃত সেবাদাতা", badgeTwo:"দ্রুত বুকিং", badgeThree:"সরাসরি কথোপকথন", stripOneTitle:"নিরাপদ প্রবেশ", stripOneText:"গ্রাহক ও সেবাদাতার আলাদা ব্যবস্থা", stripTwoTitle:"সেবার এলাকা", stripTwoText:"জেলা, থানা ও ওয়ার্ড অনুযায়ী খোঁজ", stripThreeTitle:"সহজ কার্যপ্রবাহ", stripThreeText:"বুকিং থেকে কাজ সম্পন্ন পর্যন্ত পূর্ণ নিয়ন্ত্রণ" };
       data.whyChoose = { ...data.whyChoose, kicker:"আমাদের কেন বেছে নেবেন", title:"বুকিং থেকে কাজ শেষ—বিশ্বাসযোগ্য সেবা", description:"ঘরের কাজে দক্ষ সহায়তা পাওয়ার নিরাপদ ও সহজ উপায়।", itemOneTitle:"যাচাইকৃত পেশাজীবী", itemOneText:"অনুমোদনের আগে পরিচয় ও সেবার তথ্য যাচাই করা হয়।", itemTwoTitle:"স্বচ্ছ কার্যপ্রবাহ", itemTwoText:"বুকিং, নিয়োগ, কথোপকথন, পরিশোধ ও কাজ সম্পন্ন হওয়া অনুসরণ করুন।", itemThreeTitle:"স্থানীয় ও দ্রুত", itemThreeText:"জেলা, থানা ও ওয়ার্ড অনুযায়ী সেবাদাতা খুঁজুন।" };

@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const Booking = require("../models/booking.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const Partner = require("../models/partner.model");
+const SiteSettings = require("../models/siteSettings.model");
 const { mediaUrl } = require("../utils/mediaFile");
 
 const SERVICE_CHARGE = 99;
@@ -68,6 +69,14 @@ exports.createBooking = async (req, res) => {
       customer_note,
       bkash_trx_id
     } = req.body;
+
+    const services = await SiteSettings.getServices();
+    const selectedService = services.find(
+      (service) => service.key === String(category || "").trim() && service.active !== false
+    );
+    if (!selectedService) {
+      return res.status(400).json({ message: "This service category is currently unavailable" });
+    }
 
     const transactionReference = String(bkash_trx_id || "").trim().toUpperCase();
     if (!/^[A-Za-z0-9]{6,50}$/.test(transactionReference)) {

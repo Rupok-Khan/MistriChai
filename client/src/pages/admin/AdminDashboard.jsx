@@ -426,6 +426,17 @@ export default function AdminDashboard() {
     }
   };
 
+  const reactivateService = async (key) => {
+    try {
+      const payload = new FormData();
+      payload.append("active", "true");
+      await AdminService.updateService(key, payload);
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
   return (
     <div className="container section-pad">
       <div className="admin-shell">
@@ -770,6 +781,7 @@ export default function AdminDashboard() {
                           <th>Key</th>
                           <th>Title</th>
                           <th>Description</th>
+                          <th>Status</th>
                           <th className="text-end">Action</th>
                         </tr>
                       </thead>
@@ -791,15 +803,20 @@ export default function AdminDashboard() {
                             <td>{item.key}</td>
                             <td>{item.title}</td>
                             <td>{item.desc}</td>
+                            <td><span className={`badge ${item.active === false ? "text-bg-secondary" : "text-bg-success"}`}>{item.active === false ? "Inactive" : "Active"}</span></td>
                             <td className="text-end">
                               <div className="d-flex justify-content-end gap-2">
                                 <button className="btn eco-btn-outline btn-sm" onClick={() => startServiceEdit(item)}>Edit</button>
-                                <button className="btn btn-outline-danger btn-sm" onClick={() => removeService(item.key)}>Delete</button>
+                                {item.active === false ? (
+                                  <button className="btn btn-outline-success btn-sm" onClick={() => reactivateService(item.key)}>Reactivate</button>
+                                ) : (
+                                  <button className="btn btn-outline-danger btn-sm" onClick={() => removeService(item.key)}>Deactivate</button>
+                                )}
                               </div>
                             </td>
                           </tr>
                         ))}
-                        {serviceOptions.length === 0 && <EmptyRow colSpan={5} text="No services configured." />}
+                        {serviceOptions.length === 0 && <EmptyRow colSpan={6} text="No services configured." />}
                       </tbody>
                     </table>
                   </div>

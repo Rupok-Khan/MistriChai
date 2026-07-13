@@ -621,16 +621,11 @@ exports.updateService = async (req, res, next) => {
 
 exports.deleteService = async (req, res, next) => {
   try {
-    const services = await SiteSettings.getServices();
-    const target = services.find((item) => item.key === String(req.params.key || "").trim().toUpperCase());
     const ok = await SiteSettings.deleteService(req.params.key);
     if (!ok) {
       return res.status(404).json({ message: "Service not found" });
     }
-    if (target?.imageUrl) {
-      deleteUploadedServiceImage(target.imageUrl);
-    }
-    res.json({ message: "Service deleted" });
+    res.json({ message: "Service deactivated. Existing partner accounts are preserved." });
   } catch (err) {
     next(err);
   }

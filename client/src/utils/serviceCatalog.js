@@ -1,15 +1,15 @@
 export const DEFAULT_SERVICE_OPTIONS = [
-  { key: "AC_REPAIR", title: "AC Repair", desc: "AC repair, servicing, gas refill and cooling issues.", imageUrl: "" },
-  { key: "PLUMBING", title: "Water Line", desc: "Plumbing, leak fixing, line repair and bathroom work.", imageUrl: "" },
-  { key: "GAS_STOVE_REPAIR", title: "Gas Chula", desc: "Gas stove, burner and kitchen gas line support.", imageUrl: "" },
-  { key: "HOME_CLEANING", title: "Home Cleaning", desc: "Regular and deep home cleaning support.", imageUrl: "" },
-  { key: "HOME_ELECTRONICS", title: "Home Electronics", desc: "TV, fan, light, switch and electric line support.", imageUrl: "" }
+  { key: "AC_REPAIR", title: "AC Repair", desc: "AC repair, servicing, gas refill and cooling issues.", imageUrl: "", active: true },
+  { key: "PLUMBING", title: "Water Line", desc: "Plumbing, leak fixing, line repair and bathroom work.", imageUrl: "", active: true },
+  { key: "GAS_STOVE_REPAIR", title: "Gas Chula", desc: "Gas stove, burner and kitchen gas line support.", imageUrl: "", active: true },
+  { key: "HOME_CLEANING", title: "Home Cleaning", desc: "Regular and deep home cleaning support.", imageUrl: "", active: true },
+  { key: "HOME_ELECTRONICS", title: "Home Electronics", desc: "TV, fan, light, switch and electric line support.", imageUrl: "", active: true }
 ];
 
 export const SERVICE_OPTIONS = DEFAULT_SERVICE_OPTIONS;
 
 export function normalizeServiceOptions(input) {
-  if (!Array.isArray(input) || input.length === 0) {
+  if (!Array.isArray(input)) {
     return DEFAULT_SERVICE_OPTIONS;
   }
 
@@ -26,14 +26,13 @@ export function normalizeServiceOptions(input) {
         key,
         title,
         desc: desc || title,
-        imageUrl
+        imageUrl,
+        active: ![false, 0, "0", "false", "inactive", "disabled"].includes(
+          typeof item?.active === "string" ? item.active.trim().toLowerCase() : item?.active
+        )
       };
     })
     .filter(Boolean);
-
-  if (normalized.length === 0) {
-    return DEFAULT_SERVICE_OPTIONS;
-  }
 
   const unique = [];
   const seen = new Set();

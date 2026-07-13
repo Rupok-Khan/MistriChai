@@ -1,11 +1,11 @@
 const pool = require("../config/db");
 
 const DEFAULT_SERVICE_OPTIONS = [
-  { key: "AC_REPAIR", title: "AC Repair", desc: "AC repair, servicing, gas refill and cooling issues.", imageUrl: "" },
-  { key: "PLUMBING", title: "Water Line", desc: "Plumbing, leak fixing, line repair and bathroom work.", imageUrl: "" },
-  { key: "GAS_STOVE_REPAIR", title: "Gas Chula", desc: "Gas stove, burner and kitchen gas line support.", imageUrl: "" },
-  { key: "HOME_CLEANING", title: "Home Cleaning", desc: "Regular and deep home cleaning support.", imageUrl: "" },
-  { key: "HOME_ELECTRONICS", title: "Home Electronics", desc: "TV, fan, light, switch and electric line support.", imageUrl: "" }
+  { key: "AC_REPAIR", title: "AC Repair", desc: "AC repair, servicing, gas refill and cooling issues.", imageUrl: "", active: true },
+  { key: "PLUMBING", title: "Water Line", desc: "Plumbing, leak fixing, line repair and bathroom work.", imageUrl: "", active: true },
+  { key: "GAS_STOVE_REPAIR", title: "Gas Chula", desc: "Gas stove, burner and kitchen gas line support.", imageUrl: "", active: true },
+  { key: "HOME_CLEANING", title: "Home Cleaning", desc: "Regular and deep home cleaning support.", imageUrl: "", active: true },
+  { key: "HOME_ELECTRONICS", title: "Home Electronics", desc: "TV, fan, light, switch and electric line support.", imageUrl: "", active: true }
 ];
 
 const DEFAULT_SITE_SETTINGS = {
@@ -155,7 +155,10 @@ function normalizeServiceItem(item, index = 1) {
   const title = String(item?.title || "").trim() || key.replace(/_/g, " ");
   const desc = String(item?.desc || "").trim() || `${title} service support.`;
   const imageUrl = String(item?.imageUrl || item?.image_url || "").trim();
-  return { key, title, desc, imageUrl };
+  const active = ![false, 0, "0", "false", "inactive", "disabled"].includes(
+    typeof item?.active === "string" ? item.active.trim().toLowerCase() : item?.active
+  );
+  return { key, title, desc, imageUrl, active };
 }
 
 function normalizeServices(input) {
@@ -241,8 +244,21 @@ async function setServices(services = []) {
 async function addService(payload = {}) {
   const current = await getServices();
   const item = normalizeServiceItem(payload, current.length + 1);
-  if (current.some((x) => x.key === item.key)) {
+  const existingIndex = current.findIndex((x) => x.key === item.key);
+  if (existingIndex >= 0 && current[existingIndex].active !== false) {
     throw new Error("Service key already exists");
+  }
+  if (existingIndex >= 0) {
+    const existing = current[existingIndex];
+    current[existingIndex] = normalizeServiceItem({
+      ...existing,
+      ...payload,
+      key: existing.key,
+      imageUrl: String(payload.imageUrl || "").trim() || existing.imageUrl,
+      active: true
+    }, existingIndex + 1);
+    await setServices(current);
+    return current[existingIndex];
   }
   const next = [...current, item];
   await setServices(next);
@@ -273,11 +289,12 @@ async function updateService(serviceKey, payload = {}) {
 async function deleteService(serviceKey) {
   const current = await getServices();
   const targetKey = normalizeServiceKey(serviceKey);
-  const next = current.filter((item) => item.key !== targetKey);
-  if (next.length === current.length) {
+  const index = current.findIndex((item) => item.key === targetKey);
+  if (index < 0 || current[index].active === false) {
     return false;
   }
-  await setServices(next);
+  current[index] = { ...current[index], active: false };
+  await setServices(current);
   return true;
 }
 

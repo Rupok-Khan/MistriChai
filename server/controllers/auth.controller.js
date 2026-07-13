@@ -4,6 +4,7 @@ const { signToken, signRefreshToken, verifyRefreshToken } = require("../config/j
 const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const Partner = require("../models/partner.model");
+const SiteSettings = require("../models/siteSettings.model");
 const { mediaUrl } = require("../utils/mediaFile");
 
 function isEmail(value = "") {
@@ -143,6 +144,14 @@ exports.partnerSignup = async (req, res) => {
     }
     if (email && !isEmail(email)) {
       return res.status(400).json({ message: "Invalid email address" });
+    }
+
+    const services = await SiteSettings.getServices();
+    const selectedService = services.find(
+      (service) => service.key === String(technician_category).trim() && service.active !== false
+    );
+    if (!selectedService) {
+      return res.status(400).json({ message: "This service category is currently unavailable" });
     }
 
     if (!profile || !nidFront || !nidBack) {

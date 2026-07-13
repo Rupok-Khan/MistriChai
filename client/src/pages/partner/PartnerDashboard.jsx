@@ -76,6 +76,7 @@ export default function PartnerDashboard() {
   const [workingHours, setWorkingHours] = useState({ working_start_time: "09:00", working_end_time: "18:00" });
   const [serviceOptions, setServiceOptions] = useState(DEFAULT_SERVICE_OPTIONS);
   const serviceLabelMap = buildServiceLabelMap(serviceOptions);
+  const serviceCategoryActive = me?.service_category_active !== false;
   const paidWorkPayments = workPayments.filter((item) => item.status === "PAID");
   const historyRows = paginate(history, historyPage, 6);
   const currentRows = paginate(currentOrders, currentPage, 6);
@@ -411,6 +412,11 @@ export default function PartnerDashboard() {
 
             {activeSection === "overview" && (
               <div className="row g-3">
+                {!serviceCategoryActive && (
+                  <div className="col-12">
+                    <div className="alert alert-warning mb-0">Your service category has been removed or temporarily deactivated. Your account and history are preserved; you will automatically become eligible for new jobs when admin reactivates this category.</div>
+                  </div>
+                )}
                 <div className="col-12 col-lg-6">
                   <div className="eco-card p-4 h-100">
                     <div className="d-flex gap-3 align-items-center">
@@ -460,10 +466,11 @@ export default function PartnerDashboard() {
             {activeSection === "availability" && (
               <div className="eco-card p-4">
                 <div className="fw-bold mb-2">Availability</div>
+                {!serviceCategoryActive && <div className="alert alert-warning">Availability cannot be changed while your service category is inactive. It will unlock automatically after reactivation.</div>}
                 <div className="d-flex gap-2 flex-wrap">
-                  <button className="btn eco-btn-outline" onClick={() => updateAvailability("AVAILABLE")}>Available</button>
-                  <button className="btn eco-btn-outline" onClick={() => updateAvailability("BUSY")}>Busy</button>
-                  <button className="btn eco-btn-outline" onClick={() => updateAvailability("OFFLINE")}>Offline</button>
+                  <button className="btn eco-btn-outline" disabled={!serviceCategoryActive} onClick={() => updateAvailability("AVAILABLE")}>Available</button>
+                  <button className="btn eco-btn-outline" disabled={!serviceCategoryActive} onClick={() => updateAvailability("BUSY")}>Busy</button>
+                  <button className="btn eco-btn-outline" disabled={!serviceCategoryActive} onClick={() => updateAvailability("OFFLINE")}>Offline</button>
                 </div>
                 <form className="row g-2 mt-3" onSubmit={saveWorkingHours}>
                   <div className="col-6">
@@ -514,6 +521,7 @@ export default function PartnerDashboard() {
                       <label className="form-label" htmlFor={`partner-profile-${key}`}>{PROFILE_FIELD_LABELS[key] || key.replace(/_/g, " ")}</label>
                       {key === "technician_category" ? (
                         <select id={`partner-profile-${key}`} className="form-select" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))}>
+                          {!serviceCategoryActive && <option value={me.technician_category}>{me.service_category_title || me.technician_category} (Service inactive)</option>}
                           {serviceOptions.map((option) => (
                             <option key={option.key} value={option.key}>{option.title}</option>
                           ))}

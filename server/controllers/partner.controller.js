@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const Booking = require("../models/booking.model");
 const Wallet = require("../models/wallet.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
+const SiteSettings = require("../models/siteSettings.model");
 const { mediaUrl } = require("../utils/mediaFile");
 
 function publicMediaUrl(req, value) {
@@ -40,6 +41,10 @@ function normalizeSocialUrl(value) {
 exports.me = async (req, res) => {
   try {
     const data = await Partner.getPartnerMe(req.user.id);
+    const services = await SiteSettings.getServices();
+    const category = services.find((item) => item.key === data?.technician_category);
+    data.service_category_active = Boolean(category && category.active !== false);
+    data.service_category_title = category?.title || String(data?.technician_category || "").replace(/_/g, " ");
     return res.json({ data });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
@@ -48,6 +53,18 @@ exports.me = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
+    const currentPartner = await Partner.getPartnerMe(req.user.id);
+    const requestedCategory = String(req.body.technician_category || "").trim();
+    if (requestedCategory && requestedCategory !== currentPartner?.technician_category) {
+      const services = await SiteSettings.getServices();
+      const selectedService = services.find(
+        (service) => service.key === requestedCategory && service.active !== false
+      );
+      if (!selectedService) {
+        return res.status(400).json({ message: "This service category is currently unavailable" });
+      }
+    }
+
     await Partner.updateProfile(req.user.id, {
       ...req.body,
       facebook_url: normalizeSocialUrl(req.body.facebook_url),
@@ -95,6 +112,14 @@ exports.updateWorkingHours = async (req, res) => {
 
 exports.updateAvailability = async (req, res) => {
   try {
+    const partner = await Partner.getPartnerMe(req.user.id);
+    const services = await SiteSettings.getServices();
+    const categoryActive = services.some(
+      (item) => item.key === partner?.technician_category && item.active !== false
+    );
+    if (!categoryActive) {
+      return res.status(409).json({ message: "This service category is currently inactive. Your account will become eligible automatically when admin reactivates it." });
+    }
     await Partner.updateAvailability(req.user.id, req.body.availability_status);
     const data = await Partner.getPartnerMe(req.user.id);
     return res.json({ message: "Availability updated", data });
@@ -339,6 +364,14 @@ exports.listForCustomer = async (req, res) => {
       return res.status(400).json({ message: "category is required" });
     }
 
+    const services = await SiteSettings.getServices();
+    const categoryActive = services.some(
+      (item) => item.key === String(category).trim().toUpperCase() && item.active !== false
+    );
+    if (!categoryActive) {
+      return res.json({ data: [], category_active: false });
+    }
+
     const partners = await Partner.listPartnersForCustomer({
       category,
       district,
@@ -383,7 +416,11 @@ exports.topForHome = async (req, res) => {
   try {
     const limitRaw = parseInt(req.query.limit || "3", 10);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 12) : 3;
-    const partners = await Partner.getTopPartnersForHome(limit);
+    const services = await SiteSettings.getServices();
+    const activeKeys = new Set(services.filter((item) => item.active !== false).map((item) => item.key));
+    const partners = (await Partner.getTopPartnersForHome(Math.max(limit * 3, 12)))
+      .filter((partner) => activeKeys.has(partner.technician_category))
+      .slice(0, limit);
     const mapped = partners.map((p) => ({
       id: p.user_id,
       partner_code: p.partner_code,
