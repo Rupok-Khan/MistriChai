@@ -9,6 +9,7 @@ import { SiteContentService } from "../../services/siteContent.service";
 import { PartnerService } from "../../services/partner.service";
 import DashboardPagination from "../../components/DashboardPagination";
 import { paginate } from "../../utils/pagination";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 function SidebarButton({ active, label, count, onClick }) {
   return (
@@ -613,7 +614,7 @@ export default function CustomerDashboard() {
                           <td>{item.booking_code}</td>
                           <td>
                             <div>{item.reason}</div>
-                            {item.proof_url && <a href={`${apiBase}${item.proof_url}`} target="_blank" rel="noreferrer">View proof</a>}
+                            {item.proof_url && <a href={resolveMediaUrl(item.proof_url)} target="_blank" rel="noreferrer">View proof</a>}
                           </td>
                           <td><span className="badge text-bg-secondary">{item.status}</span></td>
                           <td>{item.admin_note || "-"}</td>

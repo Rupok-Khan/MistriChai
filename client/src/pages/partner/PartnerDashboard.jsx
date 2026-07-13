@@ -8,6 +8,7 @@ import { SiteContentService } from "../../services/siteContent.service";
 import { AuthContext } from "../../context/AuthContext";
 import DashboardPagination from "../../components/DashboardPagination";
 import { paginate } from "../../utils/pagination";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -413,7 +414,7 @@ export default function PartnerDashboard() {
                 <div className="col-12 col-lg-6">
                   <div className="eco-card p-4 h-100">
                     <div className="d-flex gap-3 align-items-center">
-                      <img className="img-fluid rounded-3 border" src={`${BASE}${me.profile_photo}`} alt="profile" style={{ width: 90, height: 90, objectFit: "cover" }} />
+                      <img className="img-fluid rounded-3 border" src={resolveMediaUrl(me.profile_photo)} alt="profile" style={{ width: 90, height: 90, objectFit: "cover" }} />
                       <div>
                         <div className="fw-bold">{me.first_name} {me.last_name}</div>
                         <div className="small-muted">{serviceLabelMap[me.technician_category] || me.technician_category}</div>
@@ -499,7 +500,7 @@ export default function PartnerDashboard() {
               <div className="eco-card p-4">
                 <div className="fw-bold mb-2">Profile Edit</div>
                 <form className="partner-photo-editor mb-4" onSubmit={uploadProfilePhoto}>
-                  <img src={profilePhoto ? URL.createObjectURL(profilePhoto) : `${BASE}${me.profile_photo}`} alt={`${me.first_name} profile`} />
+                  <img src={profilePhoto ? URL.createObjectURL(profilePhoto) : resolveMediaUrl(me.profile_photo)} alt={`${me.first_name} profile`} />
                   <div className="flex-grow-1">
                     <div className="fw-semibold">Profile photo</div>
                     <div className="small-muted mb-2">JPG, PNG, WebP, HEIC or AVIF. Maximum 5MB.</div>
@@ -625,7 +626,7 @@ export default function PartnerDashboard() {
                           <td>{item.booking_code}</td>
                           <td>
                             <div>{item.reason}</div>
-                            {item.proof_url && <a href={`${BASE}${item.proof_url}`} target="_blank" rel="noreferrer">View proof</a>}
+                            {item.proof_url && <a href={resolveMediaUrl(item.proof_url)} target="_blank" rel="noreferrer">View proof</a>}
                           </td>
                           <td><span className="badge text-bg-secondary">{item.status}</span></td>
                           <td>{item.admin_note || "-"}</td>

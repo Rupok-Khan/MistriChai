@@ -5,6 +5,13 @@ const Booking = require("../models/booking.model");
 const Wallet = require("../models/wallet.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const { mediaUrl } = require("../utils/mediaFile");
+
+function publicMediaUrl(req, value) {
+  const url = String(value || "").trim();
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${req.protocol}://${req.get("host")}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 function toBool(x) {
   if (x === undefined || x === null) {
     return undefined;
@@ -346,7 +353,6 @@ exports.listForCustomer = async (req, res) => {
       );
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
     const mapped = filtered.map((p) => ({
       id: p.user_id,
       partner_code: p.partner_code,
@@ -363,7 +369,7 @@ exports.listForCustomer = async (req, res) => {
       verification_status: p.verification_status,
       rating_avg: Number(p.rating_avg || 0),
       rating_count: Number(p.rating_count || 0),
-      profile_photo_url: p.profile_photo ? `${baseUrl}${p.profile_photo}` : null
+      profile_photo_url: publicMediaUrl(req, p.profile_photo)
       ,facebook_url: p.facebook_url, instagram_url: p.instagram_url, linkedin_url: p.linkedin_url, whatsapp_url: p.whatsapp_url
     }));
 
@@ -378,8 +384,6 @@ exports.topForHome = async (req, res) => {
     const limitRaw = parseInt(req.query.limit || "3", 10);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 12) : 3;
     const partners = await Partner.getTopPartnersForHome(limit);
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-
     const mapped = partners.map((p) => ({
       id: p.user_id,
       partner_code: p.partner_code,
@@ -388,7 +392,7 @@ exports.topForHome = async (req, res) => {
       district: p.district,
       thana: p.thana,
       experience_years: p.experience_years,
-      profile_photo_url: p.profile_photo ? `${baseUrl}${p.profile_photo}` : null,
+      profile_photo_url: publicMediaUrl(req, p.profile_photo),
       availability_status: p.availability_status,
       rating_avg: Number(p.rating_avg || 0),
       rating_count: Number(p.rating_count || 0)
