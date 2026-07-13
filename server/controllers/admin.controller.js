@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-const fs = require("fs");
 const Partner = require("../models/partner.model");
 const Contact = require("../models/contact.model");
 const Booking = require("../models/booking.model");
@@ -8,44 +7,22 @@ const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const SiteSettings = require("../models/siteSettings.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
-const { uploadedFilePath } = require("../config/uploadPaths");
+const { mediaUrl, deleteMediaUrl } = require("../utils/mediaFile");
 
 function toServiceImageUrl(file) {
-  if (!file?.filename) return "";
-  return `/uploads/service/${file.filename}`;
+  return mediaUrl(file, "service") || "";
 }
 
 function deleteUploadedServiceImage(imageUrl) {
-  const raw = String(imageUrl || "").trim();
-  if (!raw || !raw.startsWith("/uploads/service/")) {
-    return;
-  }
-
-  const absolutePath = uploadedFilePath(raw, "service");
-  if (!absolutePath) return;
-
-  if (fs.existsSync(absolutePath)) {
-    try {
-      fs.unlinkSync(absolutePath);
-    } catch (err) {
-      // Non-blocking cleanup: service data changes should not fail due to file deletion issues.
-    }
-  }
+  deleteMediaUrl(imageUrl, "service").catch(() => {});
 }
 
 function toSiteImageUrl(file) {
-  if (!file?.filename) return "";
-  return `/uploads/site/${file.filename}`;
+  return mediaUrl(file, "site") || "";
 }
 
 function deleteUploadedSiteImage(imageUrl) {
-  const raw = String(imageUrl || "").trim();
-  if (!raw.startsWith("/uploads/site/")) return;
-  const absolutePath = uploadedFilePath(raw, "site");
-  if (!absolutePath) return;
-  if (fs.existsSync(absolutePath)) {
-    try { fs.unlinkSync(absolutePath); } catch (err) { /* Image cleanup must not block content updates. */ }
-  }
+  deleteMediaUrl(imageUrl, "site").catch(() => {});
 }
 
 exports.login = async (req, res) => {

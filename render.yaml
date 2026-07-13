@@ -2,12 +2,11 @@ services:
   - type: web
     name: mistrichai-api
     runtime: node
-    plan: starter
+    plan: free
     region: singapore
     rootDir: server
     buildCommand: npm ci
-    preDeployCommand: npm run db:init
-    startCommand: npm start
+    startCommand: npm run start:render
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     maxShutdownDelaySeconds: 30
@@ -19,7 +18,7 @@ services:
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        value: "3306"
+        sync: false
       - key: DB_USER
         sync: false
       - key: DB_PASSWORD
@@ -29,7 +28,9 @@ services:
       - key: DB_CONNECTION_LIMIT
         value: "10"
       - key: DB_SSL
-        value: "false"
+        value: "true"
+      - key: DB_SSL_CA_BASE64
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -46,9 +47,11 @@ services:
         sync: false
       - key: CROSS_SITE_COOKIES
         value: "true"
-      - key: UPLOAD_DIR
-        value: /var/data/uploads
-    disk:
-      name: mistrichai-uploads
-      mountPath: /var/data
-      sizeGB: 1
+      - key: CLOUDINARY_REQUIRED
+        value: "true"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

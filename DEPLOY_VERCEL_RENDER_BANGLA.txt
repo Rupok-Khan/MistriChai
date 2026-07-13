@@ -1,0 +1,549 @@
+============================================================
+ MistriChai সম্পূর্ণ ফ্রি ডিপ্লয়মেন্ট গাইড
+ Vercel + Render + Aiven MySQL + Cloudinary
+============================================================
+
+এই গাইড অনুযায়ী ডিপ্লয়মেন্ট কাঠামো হবে:
+
+Frontend  → Vercel Free
+Backend   → Render Free Web Service
+Database  → Aiven MySQL Free
+Uploads   → Cloudinary Free
+
+GitHub Repository:
+https://github.com/Rupok-Khan/MistriChai
+
+
+============================================================
+ গুরুত্বপূর্ণ Free Tier সীমাবদ্ধতা
+============================================================
+
+১. Render Free server ১৫ মিনিট কোনো request না পেলে sleep করবে।
+২. Sleep-এর পরে প্রথম request-এ server চালু হতে প্রায় এক মিনিট লাগতে পারে।
+৩. Render Free server-এর local filesystem স্থায়ী নয়। তাই সব নতুন upload
+   Cloudinary-তে রাখা হবে।
+৪. Render প্রতি workspace-এ মাসে ৭৫০ free instance hour দেয় এবং bandwidth
+   ও build usage limit প্রযোজ্য।
+৫. Aiven Free MySQL-এ বর্তমানে ১ GB RAM ও ১ GB disk পাওয়া যায়।
+৬. Aiven Free service দীর্ঘদিন ব্যবহার না হলে সেটি power off করতে পারে।
+৭. Free tier demo, learning এবং হালকা ব্যবহারের জন্য ভালো; guaranteed
+   production uptime দেয় না।
+
+
+============================================================
+ ধাপ ১: সর্বশেষ code GitHub-এ push করুন
+============================================================
+
+Project folder-এ PowerShell খুলে চালান:
+
+git status
+git add .
+git commit -m "Configure free Vercel Render Aiven Cloudinary deployment"
+git push origin main
+
+GitHub-এ নিচের file-গুলো আছে কি না নিশ্চিত করুন:
+
+render.yaml
+DEPLOYMENT.md
+client/vercel.json
+server/.env.example
+server/scripts/initDb.js
+server/config/cloudinary.js
+
+কোনো `.env` file, password, API secret বা CA certificate GitHub-এ push
+করবেন না।
+
+
+============================================================
+ ধাপ ২: Aiven Free MySQL তৈরি করুন
+============================================================
+
+১. Browser-এ খুলুন:
+   https://console.aiven.io
+
+২. Account তৈরি করুন অথবা login করুন।
+
+৩. একটি নতুন Aiven Project তৈরি করুন।
+
+৪. "Create service" চাপুন।
+
+৫. Service হিসেবে "MySQL" নির্বাচন করুন।
+
+৬. Plan হিসেবে অবশ্যই "Free" নির্বাচন করুন। Free plan-এ credit card
+   প্রয়োজন না হলে payment information দেবেন না। Final confirmation-এর আগে
+   plan Free লেখা আছে কি না আবার পরীক্ষা করুন।
+
+৭. আপনার কাছাকাছি available cloud region নির্বাচন করুন।
+
+৮. Service-এর একটি নাম দিন, যেমন:
+
+mistrichai-mysql
+
+৯. Service তৈরি করুন এবং status Running হওয়া পর্যন্ত অপেক্ষা করুন।
+
+১০. Service-এর Overview page-এ "Connection information" খুঁজুন।
+
+নিচের তথ্য copy করে নিরাপদ জায়গায় রাখুন:
+
+Host
+Port
+User
+Password
+Database Name
+Service URI
+
+সাধারণত Aiven default তথ্য এমন হতে পারে:
+
+DB_HOST=mysql-xxxx.aivencloud.com
+DB_PORT=একটি_Aiven_দেওয়া_port
+DB_USER=avnadmin
+DB_PASSWORD=আপনার_Aiven_password
+DB_NAME=defaultdb
+
+গুরুত্বপূর্ণ:
+
+- Aiven-এর port সাধারণত 3306 নাও হতে পারে। Dashboard-এর exact Port দিন।
+- DB_HOST-এর আগে https:// বা mysql:// দেবেন না।
+- DB_HOST-এর শেষে port যোগ করবেন না।
+- Password GitHub-এ রাখবেন না।
+
+
+============================================================
+ ধাপ ৩: Aiven CA Certificate প্রস্তুত করুন
+============================================================
+
+Aiven database connection TLS/SSL দিয়ে সুরক্ষিত থাকবে।
+
+১. Aiven MySQL Overview → Connection information-এ যান।
+
+২. CA Certificate download করুন। File সাধারণত `ca.pem` নামে download হবে।
+
+৩. Windows PowerShell খুলুন।
+
+৪. নিচের command-এ নিজের ca.pem path বসিয়ে চালান:
+
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\YourName\Downloads\ca.pem"))
+
+৫. Command একটি অনেক বড় single-line text দেবে। পুরো text copy করুন।
+
+৬. এই value পরে Render-এর নিচের variable-এ বসবে:
+
+DB_SSL_CA_BASE64
+
+ca.pem অথবা Base64 value GitHub-এ commit করবেন না।
+
+
+============================================================
+ ধাপ ৪: Cloudinary Free account তৈরি করুন
+============================================================
+
+১. খুলুন:
+   https://cloudinary.com
+
+২. Free account তৈরি করুন।
+
+৩. Login করে Cloudinary Console/Dashboard খুলুন।
+
+৪. Product Environment credentials থেকে নিচের তথ্য copy করুন:
+
+Cloud name
+API key
+API secret
+
+এগুলো Render-এ নিচের variable হিসেবে যাবে:
+
+CLOUDINARY_CLOUD_NAME=আপনার_cloud_name
+CLOUDINARY_API_KEY=আপনার_api_key
+CLOUDINARY_API_SECRET=আপনার_api_secret
+
+অত্যন্ত গুরুত্বপূর্ণ:
+
+- CLOUDINARY_API_SECRET কখনো frontend code-এ দেবেন না।
+- এটি Vercel-এ দেবেন না।
+- এটি শুধু Render backend Environment-এ থাকবে।
+- Cloudinary URL/CLOUDINARY_URL GitHub-এ paste করবেন না।
+
+৫. Chat-এর PDF attachment browser-এ দেখতে Cloudinary Product Environment-এর
+   Security settings খুলে "Allow delivery of PDF and ZIP files" চালু করুন।
+   Cloudinary Free account-এ PDF delivery default অবস্থায় বন্ধ থাকে।
+
+
+============================================================
+ ধাপ ৫: Render Free Backend deploy করুন
+============================================================
+
+১. খুলুন:
+   https://dashboard.render.com
+
+২. GitHub account দিয়ে login করুন।
+
+৩. "New" → "Blueprint" নির্বাচন করুন।
+
+৪. Repository connect করুন:
+
+Rupok-Khan/MistriChai
+
+৫. Render repository root-এর render.yaml file খুঁজে পাবে।
+
+৬. Blueprint একটি service তৈরি করবে:
+
+mistrichai-api
+
+৭. Configuration পরীক্ষা করুন:
+
+Runtime: Node
+Plan: Free
+Region: Singapore
+Root Directory: server
+Build Command: npm ci
+Start Command: npm run start:render
+Health Check Path: /api/health
+
+কোনো Persistent Disk যোগ করবেন না। Upload Cloudinary-তে যাবে।
+
+৮. Render যেসব Environment Variable-এর value চাইবে সেগুলো দিন:
+
+DB_HOST=আপনার_Aiven_Host
+DB_PORT=আপনার_Aiven_Port
+DB_USER=avnadmin
+DB_PASSWORD=আপনার_Aiven_Password
+DB_NAME=defaultdb
+DB_SSL_CA_BASE64=ca.pem_থেকে_তৈরি_single_line_Base64
+ADMIN_EMAIL=আপনার_private_admin_email
+ADMIN_PASSWORD=আপনার_শক্তিশালী_admin_password
+CORS_ORIGIN=https://আপনার-vercel-domain.vercel.app
+CLOUDINARY_CLOUD_NAME=আপনার_cloud_name
+CLOUDINARY_API_KEY=আপনার_api_key
+CLOUDINARY_API_SECRET=আপনার_api_secret
+
+Vercel এখনো deploy না হলে CORS_ORIGIN-এ আপাতত সম্ভাব্য domain দিন, যেমন:
+
+CORS_ORIGIN=https://mistrichai.vercel.app
+
+Vercel deploy হওয়ার পরে exact domain দিয়ে এটি update করবেন।
+
+৯. render.yaml স্বয়ংক্রিয়ভাবে নিচের value configure করবে:
+
+NODE_ENV=production
+TRUST_PROXY=true
+DB_CONNECTION_LIMIT=10
+DB_SSL=true
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=30d
+ADMIN_JWT_EXPIRES_IN=12h
+CROSS_SITE_COOKIES=true
+CLOUDINARY_REQUIRED=true
+
+১০. JWT_SECRET Render স্বয়ংক্রিয়ভাবে generate করবে। এটি অপ্রয়োজনে change
+    করবেন না। Change করলে সব customer, partner ও admin logout হয়ে যাবে।
+
+১১. "Apply Blueprint" চাপুন।
+
+১২. Free Render-এ paid pre-deploy command পাওয়া যায় না। তাই start command
+    প্রথমে `npm run db:init` দিয়ে Aiven database table তৈরি করবে, তারপর server
+    চালু করবে। এটি safe এবং একই table দ্বিতীয়বার duplicate করবে না।
+
+১৩. Render Logs-এ সফল message দেখুন:
+
+Database schema initialized successfully.
+Server running on port ...
+
+Render নিজে PORT দেয়। Manual PORT environment variable যোগ করবেন না।
+
+
+============================================================
+ ধাপ ৬: Render Backend Health Check
+============================================================
+
+Render deploy হওয়ার পরে একটি URL দেবে। উদাহরণ:
+
+https://mistrichai-api.onrender.com
+
+Browser-এ খুলুন:
+
+https://আপনার-render-domain.onrender.com/api/health
+
+Expected response:
+
+{"ok":true}
+
+Error হলে Render Logs দেখুন। সবচেয়ে সাধারণ কারণ:
+
+- Aiven Host ভুল
+- Aiven Port ভুল
+- Password ভুল
+- DB_SSL_CA_BASE64 অসম্পূর্ণ
+- Cloudinary credential missing
+
+
+============================================================
+ ধাপ ৭: Vercel Free Frontend deploy করুন
+============================================================
+
+১. খুলুন:
+   https://vercel.com
+
+২. GitHub দিয়ে login করুন।
+
+৩. "Add New" → "Project" নির্বাচন করুন।
+
+৪. Import করুন:
+
+Rupok-Khan/MistriChai
+
+৫. Root Directory Edit করে নির্বাচন করুন:
+
+client
+
+৬. Build Settings:
+
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+
+৭. Environment Variable যোগ করুন:
+
+VITE_API_URL=https://আপনার-render-domain.onrender.com
+
+উদাহরণ:
+
+VITE_API_URL=https://mistrichai-api.onrender.com
+
+শেষে slash দেবেন না।
+
+সঠিক:
+https://mistrichai-api.onrender.com
+
+ভুল:
+https://mistrichai-api.onrender.com/
+
+৮. Deploy চাপুন।
+
+৯. Vercel production domain copy করুন। উদাহরণ:
+
+https://mistrichai.vercel.app
+
+client/vercel.json থাকার কারণে dashboard route refresh করলে 404 হওয়ার কথা নয়।
+
+
+============================================================
+ ধাপ ৮: Render CORS ঠিক করুন
+============================================================
+
+১. Render → mistrichai-api → Environment খুলুন।
+
+২. CORS_ORIGIN-এ exact Vercel domain দিন:
+
+CORS_ORIGIN=https://mistrichai.vercel.app
+
+শেষে slash দেবেন না।
+
+৩. একাধিক exact domain হলে comma ব্যবহার করুন:
+
+CORS_ORIGIN=https://mistrichai.vercel.app,https://mistrichai.com,https://www.mistrichai.com
+
+৪. রাখুন:
+
+CROSS_SITE_COOKIES=true
+
+৫. Save করে Render redeploy করুন।
+
+
+============================================================
+ ধাপ ৯: Login ও Token পরীক্ষা
+============================================================
+
+Vercel website থেকে পরীক্ষা করুন:
+
+১. Customer login
+২. Partner login
+৩. Admin login
+৪. তিনটি dashboard refresh
+৫. ১৫-২০ মিনিট অপেক্ষা
+৬. আবার dashboard ব্যবহার
+
+Invalid/expired token দেখালে পরীক্ষা করুন:
+
+NODE_ENV=production
+TRUST_PROXY=true
+CROSS_SITE_COOKIES=true
+CORS_ORIGIN=exact_Vercel_URL
+
+JWT_SECRET যেন প্রতিটি deploy-এ change না হয়।
+
+Render sleep করলে প্রথম login/request-এ প্রায় এক মিনিট লাগতে পারে। এটি Free
+Render-এর স্বাভাবিক আচরণ।
+
+
+============================================================
+ ধাপ ১০: Cloudinary Upload পরীক্ষা
+============================================================
+
+নিচের file upload পরীক্ষা করুন:
+
+- Partner profile photo
+- Partner NID images
+- Customer/partner chat attachment
+- Cancellation বা rejection proof
+- Admin service card image
+- Hero image
+- Promo images
+
+Upload-এর পরে browser বা database-এ URL এমন হওয়া উচিত:
+
+https://res.cloudinary.com/...
+
+তারপর Render API redeploy করুন। File এখনো দেখা গেলে Cloudinary সঠিকভাবে কাজ
+করছে। Render local `/uploads/...`-এ নতুন production file জমা হওয়ার কথা নয়।
+
+
+============================================================
+ ধাপ ১১: সম্পূর্ণ Workflow পরীক্ষা
+============================================================
+
+১. Customer booking fee দেয়।
+২. Admin booking fee approve করে।
+৩. Customer partner নির্বাচন করে।
+৪. Admin partner assign করে।
+৫. Customer এবং partner chat করে।
+৬. প্রয়োজন হলে customer partner change request দেয়।
+৭. Admin change approve করে নতুন partner assign করে।
+৮. Partner final amount set করে।
+৯. Customer final amount verify করে।
+১০. Customer manual bKash payment ও transaction ID submit করে।
+১১. Admin final payment approve করে।
+১২. Partner notification পায় এবং কাজ Complete করে।
+১৩. Final amount partner wallet-এ যোগ হয়।
+১৪. Booking fee শুধু admin-এর হিসাবে থাকে।
+১৫. Partner withdrawal method ও request যোগ করে।
+১৬. Admin withdrawal details দেখে।
+
+
+============================================================
+ ধাপ ১২: সাধারণ সমস্যা ও সমাধান
+============================================================
+
+সমস্যা: Render deploy-এ database error
+সমাধান:
+- Aiven service Running কি না দেখুন।
+- Host, Port, User, Password, Database exact copy করুন।
+- Port অবশ্যই Aiven-এর দেওয়া port হবে।
+- DB_SSL=true রাখুন।
+- ca.pem আবার Base64 করে সম্পূর্ণ single line paste করুন।
+
+সমস্যা: Cloudinary credentials required
+সমাধান:
+- CLOUDINARY_CLOUD_NAME পরীক্ষা করুন।
+- CLOUDINARY_API_KEY পরীক্ষা করুন।
+- CLOUDINARY_API_SECRET পরীক্ষা করুন।
+- Value-এর আগে/পরে space রাখবেন না।
+
+সমস্যা: Upload failed
+সমাধান:
+- Cloudinary quota পরীক্ষা করুন।
+- File ৫ MB-এর কম রাখুন।
+- Supported image/PDF/Word/text file ব্যবহার করুন।
+- Render Logs দেখুন।
+
+সমস্যা: CORS error
+সমাধান:
+- CORS_ORIGIN exact Vercel production URL দিন।
+- শেষে slash সরান।
+- Render redeploy করুন।
+
+সমস্যা: Vercel localhost:5000 call করছে
+সমাধান:
+- Vercel-এ VITE_API_URL যোগ করুন।
+- Render URL-এর শেষে slash দেবেন না।
+- Vercel redeploy করুন।
+
+সমস্যা: প্রথম request খুব slow
+সমাধান:
+- Render Free ১৫ মিনিট idle থাকার পরে sleep করে।
+- প্রথম request-এ প্রায় এক মিনিট cold start স্বাভাবিক।
+- Guaranteed fast response চাইলে পরে Render paid plan প্রয়োজন হবে।
+
+সমস্যা: Dashboard refresh-এ 404
+সমাধান:
+- Vercel Root Directory `client` কি না দেখুন।
+- client/vercel.json GitHub-এ আছে কি না দেখুন।
+- Vercel redeploy করুন।
+
+
+============================================================
+ Custom Domain (ঐচ্ছিক)
+============================================================
+
+Recommended:
+
+https://mistrichai.com      → Vercel
+https://api.mistrichai.com  → Render
+
+Domain connect হওয়ার পরে Vercel-এ:
+
+VITE_API_URL=https://api.mistrichai.com
+
+Render-এ:
+
+CORS_ORIGIN=https://mistrichai.com,https://www.mistrichai.com
+
+তারপর Vercel এবং Render দুটো redeploy করুন। একই main domain-এর subdomain হলে
+CROSS_SITE_COOKIES=false ব্যবহার করা যেতে পারে।
+
+
+============================================================
+ নিরাপত্তা
+============================================================
+
+১. `.env` GitHub-এ push করবেন না।
+২. Aiven password GitHub/Vercel-এ দেবেন না।
+৩. Cloudinary API Secret শুধু Render-এ রাখুন।
+৪. DB_SSL_CA_BASE64 secret হিসেবে রাখুন।
+৫. শক্তিশালী ADMIN_PASSWORD ব্যবহার করুন।
+৬. GitHub, Vercel, Render, Aiven ও Cloudinary-তে 2FA চালু করুন।
+৭. Aiven backup status নিয়মিত পরীক্ষা করুন।
+৮. Free usage/quota নিয়মিত পরীক্ষা করুন।
+
+
+============================================================
+ চূড়ান্ত Checklist
+============================================================
+
+[ ] Latest code GitHub-এ push হয়েছে
+[ ] Aiven MySQL Free service Running
+[ ] Aiven Host এবং custom Port সঠিক
+[ ] ca.pem Base64 করা হয়েছে
+[ ] Cloudinary Free account তৈরি
+[ ] Cloud name, API key, API secret সংগ্রহ করা হয়েছে
+[ ] Render Blueprint plan Free
+[ ] Render-এর সব secret variable দেওয়া হয়েছে
+[ ] Render-এ কোনো disk যোগ করা হয়নি
+[ ] /api/health response {"ok":true}
+[ ] Vercel Root Directory client
+[ ] VITE_API_URL exact Render domain
+[ ] CORS_ORIGIN exact Vercel domain
+[ ] CROSS_SITE_COOKIES=true
+[ ] Customer, Partner, Admin login কাজ করে
+[ ] ১৫-২০ মিনিট পরে login কাজ করে
+[ ] Cloudinary URL দিয়ে image/file দেখা যায়
+[ ] Render redeploy-এর পরে upload অক্ষত
+[ ] Booking এবং final payment workflow কাজ করে
+[ ] কোনো password বা API secret GitHub-এ নেই
+
+
+============================================================
+ সঠিক Deployment Order
+============================================================
+
+১. Code GitHub-এ push
+২. Aiven Free MySQL তৈরি
+৩. Aiven CA certificate Base64 তৈরি
+৪. Cloudinary Free account ও credential সংগ্রহ
+৫. Render Blueprint দিয়ে Free backend deploy
+৬. Render health check
+৭. Vercel Free frontend deploy
+৮. Render CORS_ORIGIN update ও redeploy
+৯. Login, upload এবং সম্পূর্ণ business workflow test
+
+============================================================

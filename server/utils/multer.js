@@ -2,6 +2,7 @@ const multer = require("multer");
 const fs = require("fs");
 const crypto = require("crypto");
 const { uploadDirectory } = require("../config/uploadPaths");
+const { cloudinary, cloudinaryConfigured } = require("../config/cloudinary");
 
 const IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -17,6 +18,18 @@ const SAFE_EXTENSIONS = {
   "image/heic": ".heic", "image/heif": ".heif", "image/avif": ".avif",
   "application/pdf": ".pdf", "application/msword": ".doc",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx", "text/plain": ".txt"
+};
+
+const FIELD_DIRECTORIES = {
+  profile_photo: "profile",
+  nid_front_photo: "nid",
+  nid_back_photo: "nid",
+  attachment: "chat",
+  proof: "cancellation",
+  service_card_image: "service",
+  hero_image: "site",
+  promo_left_image: "site",
+  promo_right_image: "site"
 };
 
 function ensureDir(dirPath) {
@@ -36,7 +49,7 @@ ensureDir(serviceDir);
 ensureDir(siteDir);
 ensureDir(cancellationDir);
 
-const storage = multer.diskStorage({
+const localStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === "profile_photo") return cb(null, profileDir);
     if (file.fieldname === "nid_front_photo") return cb(null, nidDir);
@@ -54,6 +67,40 @@ const storage = multer.diskStorage({
     cb(null, safeName);
   }
 });
+
+const cloudinaryStorage = {
+  _handleFile(req, file, cb) {
+    const directory = FIELD_DIRECTORIES[file.fieldname] || "other";
+    const publicId = `${Date.now()}-${crypto.randomBytes(16).toString("hex")}`;
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: `mistrichai/${directory}`,
+        public_id: publicId,
+        resource_type: "auto",
+        use_filename: false,
+        unique_filename: false
+      },
+      (error, result) => {
+        if (error) return cb(error);
+        cb(null, {
+          path: result.secure_url,
+          filename: result.public_id,
+          size: result.bytes,
+          resourceType: result.resource_type
+        });
+      }
+    );
+    file.stream.pipe(stream);
+  },
+  _removeFile(req, file, cb) {
+    if (!file.filename) return cb(null);
+    cloudinary.uploader.destroy(
+      file.filename,
+      { resource_type: file.resourceType || "image", invalidate: true },
+      (error) => cb(error || null)
+    );
+  }
+};
 
 function fileFilter(req, file, cb) {
   const chatAllowed = [
@@ -77,7 +124,7 @@ function fileFilter(req, file, cb) {
 }
 
 const upload = multer({
-  storage,
+  storage: cloudinaryConfigured ? cloudinaryStorage : localStorage,
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 60, parts: 65 }
 });

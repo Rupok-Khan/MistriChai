@@ -4,6 +4,7 @@ const { signToken, signRefreshToken, verifyRefreshToken } = require("../config/j
 const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const Partner = require("../models/partner.model");
+const { mediaUrl } = require("../utils/mediaFile");
 
 function isEmail(value = "") {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -186,9 +187,9 @@ exports.partnerSignup = async (req, res) => {
       father_name,
       mother_name,
       nid_number,
-      profile_photo: `/uploads/profile/${profile.filename}`,
-      nid_front_photo: `/uploads/nid/${nidFront.filename}`,
-      nid_back_photo: `/uploads/nid/${nidBack.filename}`,
+      profile_photo: mediaUrl(profile, "profile"),
+      nid_front_photo: mediaUrl(nidFront, "nid"),
+      nid_back_photo: mediaUrl(nidBack, "nid"),
       district,
       thana,
       ward_no,

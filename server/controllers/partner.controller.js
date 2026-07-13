@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const Booking = require("../models/booking.model");
 const Wallet = require("../models/wallet.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
+const { mediaUrl } = require("../utils/mediaFile");
 function toBool(x) {
   if (x === undefined || x === null) {
     return undefined;
@@ -155,7 +156,7 @@ exports.completeOrder = async (req, res) => {
 exports.updateProfilePhoto = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "Choose a JPG, PNG, WebP, HEIC, or AVIF image" });
-    await Partner.updateProfilePhoto(req.user.id, `/uploads/profile/${req.file.filename}`);
+    await Partner.updateProfilePhoto(req.user.id, mediaUrl(req.file, "profile"));
     const data = await Partner.getPartnerMe(req.user.id);
     return res.json({ message: "Profile photo updated", data });
   } catch (err) {
@@ -310,7 +311,7 @@ exports.sendMessage = async (req, res) => {
       senderUserId: req.user.id,
       receiverUserId: booking.customer_user_id,
       messageText: req.body.message_text?.trim() || null,
-      attachmentUrl: attachment ? `/uploads/chat/${attachment.filename}` : null,
+      attachmentUrl: mediaUrl(attachment, "chat"),
       attachmentName: attachment ? attachment.originalname : null,
       attachmentType: attachment ? attachment.mimetype : null
     });

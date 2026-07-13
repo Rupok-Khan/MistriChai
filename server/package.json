@@ -5,11 +5,13 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "start:render": "node scripts/initDb.js && node server.js",
     "db:init": "node scripts/initDb.js",
     "seed:partners": "node seedDemoPartners.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

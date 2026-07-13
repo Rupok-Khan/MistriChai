@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const Booking = require("../models/booking.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const Partner = require("../models/partner.model");
+const { mediaUrl } = require("../utils/mediaFile");
 
 const SERVICE_CHARGE = 99;
 const BKASH_NUMBER = "01984646174";
@@ -275,7 +276,7 @@ exports.sendMessage = async (req, res) => {
       senderUserId: req.user.id,
       receiverUserId: booking.assigned_partner_user_id,
       messageText: req.body.message_text?.trim() || null,
-      attachmentUrl: attachment ? `/uploads/chat/${attachment.filename}` : null,
+      attachmentUrl: mediaUrl(attachment, "chat"),
       attachmentName: attachment ? attachment.originalname : null,
       attachmentType: attachment ? attachment.mimetype : null
     });

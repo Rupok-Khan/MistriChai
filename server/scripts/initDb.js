@@ -2,6 +2,7 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const mysql = require("mysql2/promise");
+const { getDatabaseSsl } = require("../config/dbSsl");
 
 const requiredVariables = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 
@@ -23,7 +24,7 @@ async function initializeDatabase() {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     multipleStatements: true,
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : undefined
+    ssl: getDatabaseSsl()
   });
 
   try {

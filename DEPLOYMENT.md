@@ -1,107 +1,99 @@
-# Deploy MistriChai with Vercel and Render
+# Free deployment: Vercel + Render + Aiven + Cloudinary
 
-Production layout:
+Architecture:
 
-- Vercel: React/Vite frontend from `client/`
-- Render Web Service: Express API from `server/`
-- Render Private Service: MySQL 8
-- Render Persistent Disk: uploaded images and documents
+- Frontend: Vercel Free
+- Backend: Render Free Web Service
+- Database: Aiven for MySQL Free
+- Uploads: Cloudinary Free
 
-## Cost requirement
+The Render free service sleeps after 15 minutes without traffic and can take about a minute to wake. Its filesystem is temporary, so all new uploads are stored in Cloudinary.
 
-The API needs a paid Render web-service instance because Render does not allow persistent disks on free web services. Without a disk, uploaded partner photos, NID files, chat attachments, service images, and site-content images disappear after a restart or deployment. MySQL also requires a private service with persistent storage.
+## 1. Create Aiven MySQL
 
-## 1. Create MySQL on Render
+1. Sign in at <https://console.aiven.io> and create a project.
+2. Create an **Aiven for MySQL** service using the **Free** plan.
+3. Wait until it is running.
+4. On **Overview > Connection information**, copy the Host, Port, User, Password, and Database name (normally `defaultdb`).
+5. Download the CA certificate (`ca.pem`).
+6. Convert it to one-line Base64 in PowerShell:
 
-1. Follow Render's official MySQL guide: <https://render.com/docs/deploy-mysql>.
-2. Use its **Deploy to Render** MySQL 8 template.
-3. Select the **Singapore** region, matching `render.yaml`.
-4. Configure strong values:
-
-```env
-MYSQL_DATABASE=mistrichai
-MYSQL_USER=mistrichai
-MYSQL_PASSWORD=GENERATE_A_STRONG_PASSWORD
-MYSQL_ROOT_PASSWORD=GENERATE_ANOTHER_STRONG_PASSWORD
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\ca.pem"))
 ```
 
-5. Confirm its disk is mounted at `/var/lib/mysql`.
-6. Wait for MySQL and copy its private hostname, usually similar to `mysql-xxxx`.
+Save the output for `DB_SSL_CA_BASE64`. Do not commit it.
 
-Keep MySQL private. Use `mysqldump` backups; Render advises against using disk-snapshot restoration for live database recovery.
+## 2. Create Cloudinary storage
 
-## 2. Deploy the API from the Blueprint
+1. Create a free account at <https://cloudinary.com>.
+2. Open the Cloudinary Console and copy **Cloud name**, **API key**, and **API secret**.
+3. Never put the API secret in Vercel or frontend code. It belongs only in Render.
+4. If chat users need to open PDF attachments, open the product environment's **Security** settings and enable **Allow delivery of PDF and ZIP files**. Cloudinary Free blocks PDF delivery by default.
 
-1. Push the latest repository changes to GitHub.
-2. In Render, choose **New > Blueprint**.
-3. Connect `Rupok-Khan/OnDemand`.
-4. Render detects [render.yaml](render.yaml) and creates `mistrichai-api` with the Node runtime, health check, database initialization, and 1 GB upload disk.
-5. Enter the required secret variables when prompted:
+## 3. Deploy the backend on Render
+
+1. Push this repository to GitHub.
+2. In Render select **New > Blueprint** and connect `Rupok-Khan/MistriChai`.
+3. Render reads `render.yaml` and creates the `mistrichai-api` free web service.
+4. Enter every variable marked `sync: false`:
 
 ```env
-DB_HOST=YOUR_MYSQL_PRIVATE_HOSTNAME
-DB_USER=mistrichai
-DB_PASSWORD=YOUR_MYSQL_PASSWORD
-DB_NAME=mistrichai
-ADMIN_EMAIL=YOUR_PRIVATE_ADMIN_EMAIL
-ADMIN_PASSWORD=YOUR_STRONG_PRIVATE_ADMIN_PASSWORD
-CORS_ORIGIN=https://YOUR-VERCEL-PROJECT.vercel.app
+DB_HOST=your-aiven-host.aivencloud.com
+DB_PORT=your-aiven-port
+DB_USER=avnadmin
+DB_PASSWORD=your-aiven-password
+DB_NAME=defaultdb
+DB_SSL_CA_BASE64=the-single-line-base64-ca
+ADMIN_EMAIL=your-admin-email
+ADMIN_PASSWORD=your-strong-admin-password
+CORS_ORIGIN=https://your-vercel-project.vercel.app
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-The Blueprint generates `JWT_SECRET` automatically. Do not change it during normal redeployments because changing it signs out every user.
+5. Apply the Blueprint. The free-compatible start command initializes missing database tables and starts Express.
+6. Verify `https://YOUR-RENDER-DOMAIN/api/health` returns `{"ok":true}`.
 
-6. Apply the Blueprint and wait for deployment.
-7. Verify `https://mistrichai-api.onrender.com/api/health` (replace the hostname with yours). It should return `{"ok":true}`.
+Do not add a Render disk, `UPLOAD_DIR`, or `PORT` variable. Render provides the port, and uploads go to Cloudinary.
 
-Render supplies `PORT` automatically. Do not set it manually.
+## 4. Deploy the frontend on Vercel
 
-## 3. Deploy the frontend on Vercel
-
-1. In Vercel, choose **Add New > Project** and import the same repository.
+1. Import the same GitHub repository in Vercel.
 2. Set **Root Directory** to `client`.
-3. Confirm Framework **Vite**, build command `npm run build`, output `dist`, and install command `npm install`.
-4. Add this variable to Production and any Preview environments you use:
+3. Confirm framework **Vite**, build command `npm run build`, and output directory `dist`.
+4. Add:
 
 ```env
-VITE_API_URL=https://mistrichai-api.onrender.com
+VITE_API_URL=https://YOUR-RENDER-DOMAIN
 ```
 
-Use your actual Render URL and do not add a trailing slash.
+Do not add a trailing slash. Deploy the frontend.
 
-5. Deploy. `client/vercel.json` handles direct visits and refreshes on dashboard routes.
-6. Copy the final Vercel production URL.
-7. In Render, update the API's `CORS_ORIGIN` to that exact URL and redeploy:
+## 5. Correct CORS after Vercel deployment
+
+Copy the final Vercel production URL. In Render update:
 
 ```env
-CORS_ORIGIN=https://mistrichai.vercel.app
+CORS_ORIGIN=https://YOUR-EXACT-VERCEL-DOMAIN
 ```
 
-Multiple exact origins can be comma-separated. Keep `CROSS_SITE_COOKIES=true` while using separate `vercel.app` and `onrender.com` domains.
+Keep `CROSS_SITE_COOKIES=true`, save, and redeploy Render. Multiple exact origins can be comma-separated.
 
-## 4. Custom domains
+## 6. Verify
 
-Recommended:
+- Test customer, partner, and admin login.
+- Stay logged in for more than 15 minutes and refresh each dashboard.
+- Upload a partner photo, admin site image, cancellation proof, and chat attachment.
+- Confirm new URLs use `https://res.cloudinary.com/...`.
+- Redeploy Render and confirm uploads still work.
+- Test booking, partner change, final payment, wallet, and withdrawal workflows.
 
-```text
-https://mistrichai.com       -> Vercel
-https://api.mistrichai.com   -> Render API
-```
+## Free-tier limitations
 
-After DNS is active:
-
-- Change Vercel `VITE_API_URL` to `https://api.mistrichai.com`, then redeploy.
-- Change Render `CORS_ORIGIN` to `https://mistrichai.com,https://www.mistrichai.com`, then redeploy.
-- With these same-site custom subdomains, `CROSS_SITE_COOKIES=false` can be used.
-
-## 5. Production checks
-
-Test login persistence beyond 15 minutes, dashboard refreshes, file uploads after an API redeploy, booking and partner-change workflows, both payment workflows, withdrawals, admin uploads, languages, and themes.
-
-Never commit `.env` files, database passwords, admin credentials, payment credentials, or JWT secrets.
-
-## Deployment files
-
-- `render.yaml`: Render API Blueprint and upload disk
-- `client/vercel.json`: Vercel SPA routing
-- `server/scripts/initDb.js`: idempotent schema initialization
-- `server/.env.example` and `client/.env.example`: variable templates
+- Render sleeps after 15 idle minutes; the first request after sleep can take about one minute.
+- Render provides 750 free instance hours per workspace per month and applies bandwidth/build limits.
+- Aiven Free MySQL currently provides 1 GB RAM and 1 GB disk, can be powered off after continued inactivity, and has no SLA.
+- Cloudinary usage must stay within the current free account allowance.
+- Free tiers are suitable for learning, demos, and light use—not guaranteed production availability.

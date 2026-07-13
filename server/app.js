@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const multer = require("multer");
 const { securityHeaders, createRateLimiter } = require("./middleware/security.middleware");
 const { uploadRoot } = require("./config/uploadPaths");

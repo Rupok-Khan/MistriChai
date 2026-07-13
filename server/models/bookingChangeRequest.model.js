@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { mediaUrl } = require("../utils/mediaFile");
 
 async function hasPendingRequest(bookingId) {
   const [rows] = await pool.query(
@@ -27,7 +28,7 @@ async function createRequest({ bookingId, requesterUserId, requestType, reason, 
       requesterUserId,
       requestType,
       reason,
-      proof ? `/uploads/cancellation/${proof.filename}` : null,
+      mediaUrl(proof, "cancellation"),
       proof?.originalname || null,
       proof?.mimetype || null
     ]
