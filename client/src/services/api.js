@@ -1,7 +1,23 @@
 // client/src/services/api.js
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export async function apiFetch(path, options = {}) {
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE}/api/auth/refresh`, { method: "POST", credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Session expired");
+        const data = await response.json();
+        localStorage.setItem("token", data.token);
+        return data.token;
+      })
+      .finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+export async function apiFetch(path, options = {}, retried = false) {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
 
   const headers = new Headers(options.headers || {});
@@ -46,7 +62,19 @@ export async function apiFetch(path, options = {}) {
     ...options,
     headers,
     body: finalBody,
+    credentials: "include",
   });
+
+  if (res.status === 401 && !retried && !path.startsWith("/api/admin") && !path.startsWith("/api/auth/")) {
+    try {
+      await refreshAccessToken();
+      return apiFetch(path, options, true);
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("auth-session-expired"));
+    }
+  }
 
   // ✅ Always read text first
   const text = await res.text();

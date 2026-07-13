@@ -89,7 +89,7 @@ export default function Contact() {
         <div className="col-12 col-lg-6">
           <div className="eco-card p-4 h-100">
             <h4 className="fw-bold">{content?.supportTitle || "Support Info"}</h4>
-            <p className="small-muted mb-2">Email: {content?.supportEmail || "support@ondemand.com"}</p>
+            <p className="small-muted mb-2">Email: {content?.supportEmail || "support@mistrichai.com"}</p>
             <p className="small-muted mb-2">Phone: {content?.supportPhone || "+880 1XXXXXXXXX"}</p>
             <p className="small-muted mb-2">Hours: {content?.supportHours || "9:00 AM - 10:00 PM"}</p>
             <p className="small-muted mb-2">Address: {content?.supportAddress || "7510, Brand Tower, New York, USA"}</p>

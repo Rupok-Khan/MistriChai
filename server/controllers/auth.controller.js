@@ -1,12 +1,33 @@
 const bcrypt = require("bcrypt");
 const { validationResult } = require("express-validator");
-const { signToken } = require("../config/jwt");
+const { signToken, signRefreshToken, verifyRefreshToken } = require("../config/jwt");
 const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const Partner = require("../models/partner.model");
 
 function isEmail(value = "") {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
+function cookieOptions() {
+  const production = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: production,
+    sameSite: production && process.env.CROSS_SITE_COOKIES === "true" ? "None" : "Lax",
+    path: "/api/auth",
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  };
+}
+
+function setRefreshCookie(res, user) {
+  res.cookie("ondemand_refresh", signRefreshToken({ id: user.id, role: user.role }), cookieOptions());
+}
+
+function readCookie(req, name) {
+  const header = String(req.headers.cookie || "");
+  const item = header.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  return item ? decodeURIComponent(item.slice(name.length + 1)) : "";
 }
 
 exports.customerSignup = async (req, res) => {
@@ -40,6 +61,7 @@ exports.customerSignup = async (req, res) => {
     await Customer.createCustomerProfile({ user_id: userId, address });
 
     const token = signToken({ id: userId, role: "CUSTOMER" });
+    setRefreshCookie(res, { id: userId, role: "CUSTOMER" });
     return res.status(201).json({
       token,
       user: { id: userId, role: "CUSTOMER", name, email, mobile }
@@ -70,6 +92,7 @@ exports.customerLogin = async (req, res) => {
     }
 
     const token = signToken({ id: user.id, role: user.role });
+    setRefreshCookie(res, user);
     return res.json({
       token,
       user: {
@@ -177,6 +200,7 @@ exports.partnerSignup = async (req, res) => {
     });
 
     const token = signToken({ id: userId, role: "PARTNER" });
+    setRefreshCookie(res, { id: userId, role: "PARTNER" });
     return res.status(201).json({
       token,
       user: { id: userId, role: "PARTNER", name: fullName, email: email || null, mobile }
@@ -211,6 +235,7 @@ exports.partnerLogin = async (req, res) => {
     }
 
     const token = signToken({ id: user.id, role: user.role });
+    setRefreshCookie(res, user);
     return res.json({
       token,
       user: {
@@ -224,4 +249,28 @@ exports.partnerLogin = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
+};
+
+exports.refreshSession = async (req, res) => {
+  try {
+    const refreshToken = readCookie(req, "ondemand_refresh");
+    if (!refreshToken) return res.status(401).json({ message: "Session expired" });
+    const decoded = verifyRefreshToken(refreshToken);
+    const user = await User.findById(decoded.id);
+    if (!user || !user.is_active || user.role !== decoded.role || !["CUSTOMER", "PARTNER"].includes(user.role)) {
+      res.clearCookie("ondemand_refresh", cookieOptions());
+      return res.status(401).json({ message: "Session expired" });
+    }
+    const token = signToken({ id: user.id, role: user.role });
+    setRefreshCookie(res, user);
+    return res.json({ token });
+  } catch (err) {
+    res.clearCookie("ondemand_refresh", cookieOptions());
+    return res.status(401).json({ message: "Session expired" });
+  }
+};
+
+exports.logout = (req, res) => {
+  res.clearCookie("ondemand_refresh", cookieOptions());
+  return res.json({ message: "Logged out" });
 };

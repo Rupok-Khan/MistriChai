@@ -233,7 +233,7 @@ export default function Home() {
         </section>
 
         {reviews.length > 0 && <section className="home-reviews-section home-contained-section mt-4">
-          <div className="text-center mb-4"><div className="home-services-eyebrow">Customer stories</div><h2 className="fw-bold">What our customers say</h2><p className="small-muted mb-0">Real experiences shared by people using OnDemand.</p></div>
+          <div className="text-center mb-4"><div className="home-services-eyebrow">Customer stories</div><h2 className="fw-bold">What our customers say</h2><p className="small-muted mb-0">Real experiences shared by people using MistriChai.</p></div>
           <div className="review-marquee" aria-label="Customer reviews"><div className="review-marquee-track">
             {[...reviews, ...reviews].map((review, index) => <article className="modern-review-card" key={`${review.name}-${index}`} aria-hidden={index >= reviews.length}>
               <div className="review-quote">“</div><div className="review-stars">{"★".repeat(Math.max(1, Math.min(5, Number(review.rating) || 5)))}</div><p>{review.text}</p>

@@ -66,7 +66,7 @@ const DEFAULT_SITE_SETTINGS = {
     pageTitle: "Contact",
     pageSubtitle: "Send a message and our team will respond as soon as possible.",
     supportTitle: "Support Info",
-    supportEmail: "support@ondemand.com",
+    supportEmail: "support@mistrichai.com",
     supportPhone: "+880 1XXXXXXXXX",
     supportHours: "9:00 AM - 10:00 PM",
     supportAddress: "7510, Brand Tower, New York, USA",
@@ -78,9 +78,9 @@ const DEFAULT_SITE_SETTINGS = {
       "We prioritize responding to your inquiries promptly to ensure you receive the assistance you need in a timely manner."
   },
   about: {
-    title: "About EcoFix",
+    title: "About MistriChai",
     description:
-      "EcoFix connects customers with verified technicians. Our goal is to make service booking simple, trustworthy, and eco-conscious while focusing on repair-first support.",
+      "MistriChai connects customers with verified service professionals. Our goal is to make home-service booking simple, trustworthy, and transparent.",
     missionTitle: "Mission",
     missionText: "Make local technician services safe, fast, and accessible for everyone.",
     visionTitle: "Vision",
@@ -197,7 +197,11 @@ function normalizeSettings(rows = []) {
 async function getAllSettings() {
   await ensureTable();
   const [rows] = await pool.query("SELECT section_key, content_json FROM site_settings");
-  return normalizeSettings(rows);
+  const settings = normalizeSettings(rows);
+  if (settings.about?.title === "About EcoFix") settings.about.title = "About MistriChai";
+  if (String(settings.about?.description || "").startsWith("EcoFix connects customers")) settings.about.description = DEFAULT_SITE_SETTINGS.about.description;
+  if (settings.contact?.supportEmail === "support@ondemand.com") settings.contact.supportEmail = "support@mistrichai.com";
+  return settings;
 }
 
 async function updateAllSettings(payload = {}) {

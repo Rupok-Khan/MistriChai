@@ -33,9 +33,9 @@ export default function Footer() {
 
             <div className="footer__logoText">
               <div className="footer__name">
-                On<span>Demand</span>
+                Mistri<span>Chai</span>
               </div>
-              <div className="footer__tagline">Cleaning service company</div>
+              <div className="footer__tagline">Trusted home service platform</div>
             </div>
           </div>
 
@@ -84,7 +84,7 @@ export default function Footer() {
       <div className="footer__divider" />
 
       <div className="footer__bottom">
-        © {new Date().getFullYear()} OnDemand. All rights reserved.
+        © {new Date().getFullYear()} MistriChai. All rights reserved.
       </div>
     </footer>
   );

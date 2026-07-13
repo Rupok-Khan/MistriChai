@@ -25,9 +25,9 @@ export default function About() {
       <div className="row g-4">
         <div className="col-12 col-lg-7">
           <div className="eco-card p-4">
-            <h2 className="fw-bold">{content?.title || "About EcoFix"}</h2>
+            <h2 className="fw-bold">{content?.title || "About MistriChai"}</h2>
             <p className="small-muted mt-2">
-              {content?.description || "EcoFix connects customers with verified technicians. Our goal is to make service booking simple, trustworthy, and eco-conscious while focusing on repair-first support."}
+              {content?.description || "MistriChai connects customers with verified service professionals. Our goal is to make home-service booking simple, trustworthy, and transparent."}
             </p>
 
             <div className="row g-3 mt-3">

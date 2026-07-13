@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
@@ -45,7 +46,11 @@ export function AuthProvider({ children }) {
       }
     };
     window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    window.addEventListener("auth-session-expired", handler);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("auth-session-expired", handler);
+    };
   }, []);
 
   const value = useMemo(() => ({ user, login, logout, updateUser }), [user]);

@@ -76,7 +76,7 @@ export default function HomeContactSection({ content }) {
             </div>
             <div className="contactSec__meta">
               <div className="contactSec__metaTitle">Email Now</div>
-              <div className="contactSec__metaText">{content?.supportEmail || "support@ondemand.com"}</div>
+              <div className="contactSec__metaText">{content?.supportEmail || "support@mistrichai.com"}</div>
             </div>
           </div>
 

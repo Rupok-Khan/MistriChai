@@ -24,7 +24,7 @@ export default function Navbar() {
     <nav className="navbar navbar-expand-lg eco-navbar sticky-top">
       <div className="container">
         <Link className="navbar-brand fw-bold" to="/">
-          On<span style={{ color: "var(--eco-700)" }}>Demand</span>
+          Mistri<span style={{ color: "var(--eco-700)" }}>Chai</span>
         </Link>
 
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
