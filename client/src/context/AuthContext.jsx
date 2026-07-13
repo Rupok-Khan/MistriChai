@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AuthContext } from "./authContext";
+import { AuthContext } from "./authContext.js";
+
+export { AuthContext } from "./authContext.js";
 
 export function AuthProvider({ children }) {
   // Initialize from localStorage ONCE (no setState inside effect needed)
