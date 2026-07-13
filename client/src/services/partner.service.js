@@ -39,7 +39,17 @@ export const PartnerService = {
       method: "PATCH",
       body: payload
     }),
+  updateProfilePhoto: (payload) => apiFetch("/api/partner/profile/photo", { method: "PATCH", body: payload }),
+  setWorkPayment: (id, payload) => apiFetch(`/api/partner/orders/${id}/work-payment`, { method: "PUT", body: payload }),
+  workPayments: () => apiFetch("/api/partner/work-payments"),
+  rejectionRequests: () => apiFetch("/api/partner/rejection-requests"),
+  requestOrderRejection: (id, payload) =>
+    apiFetch(`/api/partner/orders/${id}/rejection-request`, {
+      method: "POST",
+      body: payload
+    }),
   wallet: () => apiFetch("/api/partner/wallet"),
+  savePayoutMethod: (payload) => apiFetch("/api/partner/wallet/payout-method", { method: "PUT", body: payload }),
   requestWithdrawal: (payload) =>
     apiFetch("/api/partner/wallet/withdrawals", {
       method: "POST",

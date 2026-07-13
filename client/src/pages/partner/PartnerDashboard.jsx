@@ -1,12 +1,36 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { PartnerService } from "../../services/partner.service";
 import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import Loading from "../../components/Loading";
 import Alert from "../../components/Alert";
 import DashboardChatWindow from "../../components/DashboardChatWindow";
 import { SiteContentService } from "../../services/siteContent.service";
+import { AuthContext } from "../../context/AuthContext";
+import DashboardPagination from "../../components/DashboardPagination";
+import { paginate } from "../../utils/pagination";
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const PROFILE_FIELD_LABELS = {
+  first_name: "First Name",
+  last_name: "Last Name",
+  email: "Email Address",
+  mobile: "Mobile Number",
+  nid_address: "NID Address",
+  nid_number: "NID Number",
+  father_name: "Father's Name",
+  mother_name: "Mother's Name",
+  district: "District",
+  thana: "Thana / Upazila",
+  ward_no: "Ward Number",
+  city_corp_or_union: "City Corporation / Municipality / Union",
+  technician_category: "Service Category",
+  experience_years: "Years of Experience",
+  facebook_url: "Facebook Profile URL",
+  instagram_url: "Instagram Profile URL",
+  linkedin_url: "LinkedIn Profile URL",
+  whatsapp_url: "WhatsApp Link"
+};
 
 function SidebarButton({ active, label, count, onClick }) {
   return (
@@ -18,10 +42,17 @@ function SidebarButton({ active, label, count, onClick }) {
 }
 
 export default function PartnerDashboard() {
+  const { updateUser } = useContext(AuthContext);
   const [me, setMe] = useState(null);
   const [currentOrders, setCurrentOrders] = useState([]);
   const [history, setHistory] = useState([]);
+  const [workPayments, setWorkPayments] = useState([]);
+  const [workAmounts, setWorkAmounts] = useState({});
+  const [finalPaymentOrder, setFinalPaymentOrder] = useState(null);
+  const [finalPaymentSaving, setFinalPaymentSaving] = useState(false);
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] });
+  const [rejectionRequests, setRejectionRequests] = useState([]);
+  const [rejectionDrafts, setRejectionDrafts] = useState({});
   const [activeBookingId, setActiveBookingId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
@@ -32,22 +63,33 @@ export default function PartnerDashboard() {
   const [err, setErr] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
   const [profileForm, setProfileForm] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "" });
   const [withdrawForm, setWithdrawForm] = useState({ amount: "", note: "" });
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [payoutSaving, setPayoutSaving] = useState(false);
+  const [payoutForm, setPayoutForm] = useState({ method: "BKASH", account_name: "", account_number: "", bank_name: "", branch_name: "", routing_number: "" });
+  const [historyPage, setHistoryPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [workingHours, setWorkingHours] = useState({ working_start_time: "09:00", working_end_time: "18:00" });
   const [serviceOptions, setServiceOptions] = useState(DEFAULT_SERVICE_OPTIONS);
   const serviceLabelMap = buildServiceLabelMap(serviceOptions);
+  const paidWorkPayments = workPayments.filter((item) => item.status === "PAID");
+  const historyRows = paginate(history, historyPage, 6);
+  const currentRows = paginate(currentOrders, currentPage, 6);
 
   const loadAll = async () => {
     setErr("");
     try {
-      const [meRes, currentRes, historyRes, walletRes, supportRes, siteRes] = await Promise.all([
+      const [meRes, currentRes, historyRes, walletRes, supportRes, siteRes, rejectionRes, workPaymentRes] = await Promise.all([
         PartnerService.me(),
         PartnerService.currentOrders(),
         PartnerService.orderHistory(),
         PartnerService.wallet(),
         PartnerService.supportMessages(),
-        SiteContentService.getPublic()
+        SiteContentService.getPublic(),
+        PartnerService.rejectionRequests(), PartnerService.workPayments()
       ]);
 
       setMe(meRes.data);
@@ -65,7 +107,11 @@ export default function PartnerDashboard() {
         ward_no: meRes.data.ward_no,
         city_corp_or_union: meRes.data.city_corp_or_union,
         technician_category: meRes.data.technician_category,
-        experience_years: meRes.data.experience_years
+        experience_years: meRes.data.experience_years,
+        facebook_url: meRes.data.facebook_url || "",
+        instagram_url: meRes.data.instagram_url || "",
+        linkedin_url: meRes.data.linkedin_url || "",
+        whatsapp_url: meRes.data.whatsapp_url || ""
       });
       setWorkingHours({
         working_start_time: meRes.data.working_start_time?.slice(0, 5) || "09:00",
@@ -73,7 +119,10 @@ export default function PartnerDashboard() {
       });
       setCurrentOrders(currentRes.data || []);
       setHistory(historyRes.data || []);
+      setWorkPayments(workPaymentRes.data || []);
       setWallet(walletRes.data || { balance: 0, transactions: [] });
+      if (walletRes.data?.payout_method) setPayoutForm((previous) => ({ ...previous, ...walletRes.data.payout_method }));
+      setRejectionRequests(rejectionRes.data || []);
       setSupportMessages(supportRes.data || []);
       setServiceOptions(normalizeServiceOptions(siteRes?.data?.services));
     } catch (e) {
@@ -112,6 +161,11 @@ export default function PartnerDashboard() {
     try {
       const res = await PartnerService.updateProfile(profileForm);
       setMe(res.data);
+      updateUser({
+        name: `${res.data.first_name} ${res.data.last_name}`.trim(),
+        email: res.data.email,
+        mobile: res.data.mobile
+      });
     } catch (e2) {
       setErr(e2.message);
     }
@@ -155,6 +209,69 @@ export default function PartnerDashboard() {
     }
   };
 
+  const uploadProfilePhoto = async (e) => {
+    e.preventDefault();
+    if (!profilePhoto) { setErr("Choose a profile image first."); return; }
+    try {
+      setPhotoUploading(true);
+      setErr("");
+      const payload = new FormData();
+      payload.append("profile_photo", profilePhoto);
+      const res = await PartnerService.updateProfilePhoto(payload);
+      setMe(res.data);
+      setProfilePhoto(null);
+    } catch (error) { setErr(error.message); }
+    finally { setPhotoUploading(false); }
+  };
+
+  const saveWorkAmount = async (orderId) => {
+    const amount = Number(workAmounts[orderId]);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setErr("Enter a valid final payment amount.");
+      return;
+    }
+    try {
+      setFinalPaymentSaving(true);
+      setErr("");
+      await PartnerService.setWorkPayment(orderId, { amount });
+      await loadAll();
+      setFinalPaymentOrder(null);
+    } catch (e) { setErr(e.message); }
+    finally { setFinalPaymentSaving(false); }
+  };
+
+  const openFinalPaymentModal = (order) => {
+    const payment = workPayments.find((item) => Number(item.booking_id) === Number(order.id));
+    setWorkAmounts((previous) => ({ ...previous, [order.id]: previous[order.id] || payment?.amount || "" }));
+    setFinalPaymentOrder(order);
+    setErr("");
+  };
+
+  const updateRejectionDraft = (bookingId, key, value) => {
+    setRejectionDrafts((prev) => ({
+      ...prev,
+      [bookingId]: { reason: "", proof: null, ...prev[bookingId], [key]: value }
+    }));
+  };
+
+  const submitRejectionRequest = async (bookingId) => {
+    const draft = rejectionDrafts[bookingId] || {};
+    if (!String(draft.reason || "").trim()) {
+      setErr("Please explain why you want to reject this job.");
+      return;
+    }
+    try {
+      const payload = new FormData();
+      payload.append("reason", draft.reason.trim());
+      if (draft.proof) payload.append("proof", draft.proof);
+      await PartnerService.requestOrderRejection(bookingId, payload);
+      setRejectionDrafts((prev) => ({ ...prev, [bookingId]: { reason: "", proof: null } }));
+      await loadAll();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
   const requestWithdrawal = async (e) => {
     e.preventDefault();
     try {
@@ -166,6 +283,22 @@ export default function PartnerDashboard() {
       await loadAll();
     } catch (e2) {
       setErr(e2.message);
+    }
+  };
+
+  const savePayoutMethod = async (e) => {
+    e.preventDefault();
+    try {
+      setPayoutSaving(true);
+      setErr("");
+      const res = await PartnerService.savePayoutMethod(payoutForm);
+      setWallet(res.data);
+      setPayoutForm((previous) => ({ ...previous, ...res.data.payout_method }));
+      setShowPayoutModal(false);
+    } catch (error) {
+      setErr(error.message);
+    } finally {
+      setPayoutSaving(false);
     }
   };
 
@@ -213,6 +346,7 @@ export default function PartnerDashboard() {
     { key: "profile", label: "Profile Edit" },
     { key: "security", label: "Security" },
     { key: "current", label: "Current Orders", count: currentOrders.length },
+    { key: "rejections", label: "Job Rejection Requests", count: rejectionRequests.filter((item) => item.status === "PENDING").length },
     { key: "wallet", label: "Wallet", count: wallet.transactions?.length || 0 },
     { key: "history", label: "Order History", count: history.length },
     { key: "chat", label: "Chat Help" },
@@ -254,6 +388,7 @@ export default function PartnerDashboard() {
                 {activeSection === "profile" && "Profile Edit"}
                 {activeSection === "security" && "Security"}
                 {activeSection === "current" && "Current Orders"}
+                {activeSection === "rejections" && "Job Rejection Requests"}
                 {activeSection === "wallet" && "Wallet and Withdraw"}
                 {activeSection === "history" && "Order History"}
                 {activeSection === "chat" && "Live Chat"}
@@ -265,6 +400,7 @@ export default function PartnerDashboard() {
                 {activeSection === "profile" && "Edit your profile and technician information."}
                 {activeSection === "security" && "Change your dashboard password."}
                 {activeSection === "current" && "Manage assigned jobs and complete them when finished."}
+                {activeSection === "rejections" && "Ask admin to release an assigned job, with a reason and optional proof."}
                 {activeSection === "wallet" && "Review wallet activity and request withdrawals."}
                 {activeSection === "history" && "Review completed and previous service orders."}
                 {activeSection === "chat" && "Use chat from current orders to talk with assigned customers."}
@@ -362,19 +498,29 @@ export default function PartnerDashboard() {
             {activeSection === "profile" && (
               <div className="eco-card p-4">
                 <div className="fw-bold mb-2">Profile Edit</div>
+                <form className="partner-photo-editor mb-4" onSubmit={uploadProfilePhoto}>
+                  <img src={profilePhoto ? URL.createObjectURL(profilePhoto) : `${BASE}${me.profile_photo}`} alt={`${me.first_name} profile`} />
+                  <div className="flex-grow-1">
+                    <div className="fw-semibold">Profile photo</div>
+                    <div className="small-muted mb-2">JPG, PNG, WebP, HEIC or AVIF. Maximum 5MB.</div>
+                    <input type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setProfilePhoto(e.target.files?.[0] || null)} />
+                  </div>
+                  <button className="btn eco-btn" disabled={!profilePhoto || photoUploading}>{photoUploading ? "Uploading..." : "Update Photo"}</button>
+                </form>
                 <form className="row g-2" onSubmit={saveProfile}>
                   {Object.entries(profileForm).map(([key, value]) => (
                     <div key={key} className={key === "nid_address" ? "col-12" : "col-12 col-md-6"}>
+                      <label className="form-label" htmlFor={`partner-profile-${key}`}>{PROFILE_FIELD_LABELS[key] || key.replace(/_/g, " ")}</label>
                       {key === "technician_category" ? (
-                        <select className="form-select" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))}>
+                        <select id={`partner-profile-${key}`} className="form-select" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))}>
                           {serviceOptions.map((option) => (
                             <option key={option.key} value={option.key}>{option.title}</option>
                           ))}
                         </select>
                       ) : key === "nid_address" ? (
-                        <textarea className="form-control" rows="2" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        <textarea id={`partner-profile-${key}`} className="form-control" rows="2" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))} />
                       ) : (
-                        <input className="form-control" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        <input id={`partner-profile-${key}`} type={key === "email" ? "email" : key === "experience_years" ? "number" : key.endsWith("_url") ? "url" : "text"} min={key === "experience_years" ? "0" : undefined} placeholder={key.endsWith("_url") ? "https://..." : undefined} className="form-control" value={value} onChange={(e) => setProfileForm((p) => ({ ...p, [key]: e.target.value }))} />
                       )}
                     </div>
                   ))}
@@ -386,8 +532,9 @@ export default function PartnerDashboard() {
             )}
 
             {activeSection === "current" && (
-              <div className="eco-card p-4">
-                <div className="fw-bold mb-2">Current Orders</div>
+                <div className="eco-card p-4">
+                  <div className="fw-bold mb-2">Current Orders</div>
+                  {paidWorkPayments.length > 0 && <div className="alert alert-success">{paidWorkPayments.length} final payment(s) approved. You can now complete those jobs.</div>}
                 <div className="table-responsive">
                   <table className="table align-middle mb-0">
                     <thead>
@@ -395,30 +542,96 @@ export default function PartnerDashboard() {
                         <th>Booking</th>
                         <th>Customer</th>
                         <th>Service</th>
-                        <th>Status</th>
+                        <th>Status</th><th>Work Payment</th>
                         <th className="text-end">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {currentOrders.map((order) => (
+                      {currentRows.items.map((order) => (
                         <tr key={order.id}>
                           <td>{order.booking_code}</td>
                           <td>{order.customer_name}</td>
                           <td>{serviceLabelMap[order.category] || order.category}</td>
                           <td>{order.status}</td>
+                          <td>
+                            <div className="d-flex flex-column align-items-start gap-2">
+                              {(() => {
+                                const payment = workPayments.find((item) => Number(item.booking_id) === Number(order.id));
+                                return payment ? <span className="fw-semibold">৳{payment.amount} <span className="badge bg-success ms-1">{payment.status}</span></span> : <span className="small-muted">Not set</span>;
+                              })()}
+                              <button type="button" className="btn eco-btn-outline btn-sm" onClick={() => openFinalPaymentModal(order)}>Set Final Payment</button>
+                            </div>
+                          </td>
                           <td className="text-end">
                             <div className="d-flex justify-content-end gap-2">
                               <button className="btn eco-btn-outline btn-sm" onClick={() => loadMessages(order.id)}>Chat</button>
-                              <button className="btn eco-btn btn-sm" onClick={() => completeOrder(order.id)}>Complete</button>
+                              <button className="btn btn-outline-danger btn-sm" onClick={() => setActiveSection("rejections")}>Request Reject</button>
+                              <button className="btn eco-btn btn-sm" disabled={workPayments.find((x) => Number(x.booking_id) === Number(order.id))?.status !== "PAID"} onClick={() => completeOrder(order.id)}>Complete</button>
                             </div>
                           </td>
                         </tr>
                       ))}
                       {currentOrders.length === 0 && (
                         <tr>
-                          <td colSpan="5" className="text-center small-muted">No active orders.</td>
+                          <td colSpan="6" className="text-center small-muted">No active orders.</td>
                         </tr>
                       )}
+                      {currentOrders.length > 0 && <tr><td colSpan="6"><DashboardPagination page={currentRows.page} pages={currentRows.pages} onChange={setCurrentPage} /></td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeSection === "rejections" && (
+              <div className="eco-card p-4">
+                <div className="fw-bold mb-1">Request Job Rejection</div>
+                <div className="small-muted mb-3">Explain why you cannot continue. You may attach a chat screenshot, image, PDF, Word file, or text file up to 5MB.</div>
+
+                {currentOrders.map((order) => {
+                  const pending = rejectionRequests.some((item) => Number(item.booking_id) === Number(order.id) && item.status === "PENDING");
+                  const draft = rejectionDrafts[order.id] || { reason: "", proof: null };
+                  return (
+                    <div key={order.id} className="border rounded-3 p-3 mb-3">
+                      <div className="fw-semibold">{order.booking_code} | {serviceLabelMap[order.category] || order.category}</div>
+                      <div className="small-muted mb-2">Customer: {order.customer_name}</div>
+                      {pending ? (
+                        <div className="alert alert-warning mb-0">Your request is waiting for admin review. This job cannot be completed meanwhile.</div>
+                      ) : (
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <textarea className="form-control" rows="3" minLength="10" placeholder="Explain why you need to reject this job" value={draft.reason} onChange={(e) => updateRejectionDraft(order.id, "reason", e.target.value)} />
+                          </div>
+                          <div className="col-12 col-md-8">
+                            <input type="file" className="form-control" accept="image/*,.pdf,.doc,.docx,.txt" onChange={(e) => updateRejectionDraft(order.id, "proof", e.target.files?.[0] || null)} />
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <button type="button" className="btn btn-outline-danger w-100" onClick={() => submitRejectionRequest(order.id)}>Send Request</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {currentOrders.length === 0 && <div className="small-muted mb-3">No assigned job is currently eligible for rejection.</div>}
+
+                <div className="fw-bold mt-4 mb-2">Request History</div>
+                <div className="table-responsive">
+                  <table className="table align-middle mb-0">
+                    <thead><tr><th>Booking</th><th>Reason / Proof</th><th>Status</th><th>Admin Note</th></tr></thead>
+                    <tbody>
+                      {rejectionRequests.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.booking_code}</td>
+                          <td>
+                            <div>{item.reason}</div>
+                            {item.proof_url && <a href={`${BASE}${item.proof_url}`} target="_blank" rel="noreferrer">View proof</a>}
+                          </td>
+                          <td><span className="badge text-bg-secondary">{item.status}</span></td>
+                          <td>{item.admin_note || "-"}</td>
+                        </tr>
+                      ))}
+                      {rejectionRequests.length === 0 && <tr><td colSpan="4" className="text-center small-muted">No rejection requests yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -427,17 +640,36 @@ export default function PartnerDashboard() {
 
             {activeSection === "wallet" && (
               <div className="eco-card p-4">
-                <div className="fw-bold mb-2">Wallet and Withdraw</div>
-                <div className="small-muted mb-2">Balance: <b>{wallet.balance}</b></div>
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                  <div className="fw-bold">Wallet and Withdraw</div>
+                  <button type="button" className="btn eco-btn" onClick={() => setShowPayoutModal(true)}>{wallet.payout_method ? "Edit Wallet" : "+ Add Wallet"}</button>
+                </div>
+                <div className="small-muted mb-2">Final work earnings balance: <b>৳{Number(wallet.balance || 0).toFixed(2)}</b></div>
+                <div className="small-muted mb-3">Booking fees belong to the platform admin and are never added to this wallet.</div>
+                {wallet.payout_method ? (
+                  <div className="payout-method-card mb-3">
+                    <span className="payout-method-badge">{wallet.payout_method.method}</span>
+                    <div className="fw-semibold mt-2">{wallet.payout_method.account_name}</div>
+                    <div>{wallet.payout_method.account_number}</div>
+                    {wallet.payout_method.method === "BANK" && <div className="small-muted mt-1">{wallet.payout_method.bank_name} · {wallet.payout_method.branch_name}{wallet.payout_method.routing_number ? ` · Routing ${wallet.payout_method.routing_number}` : ""}</div>}
+                  </div>
+                ) : <div className="alert alert-warning">Add bKash, Nagad, Rocket, or bank account details before requesting a withdrawal.</div>}
+                {Number(wallet.balance || 0) === 0 ? (
+                  <div className="alert alert-secondary">No work earnings yet. Your wallet will be credited after an approved final payment and completed job.</div>
+                ) : Number(wallet.withdrawable_balance || 0) < 300 ? (
+                  <div className="alert alert-warning">Withdrawal becomes available when your withdrawable amount reaches ৳300. You must have at least ৳400 with no pending request because ৳100 remains in the wallet.</div>
+                ) : (
+                  <div className="alert alert-info">Available to withdraw: <b>৳{Number(wallet.withdrawable_balance || 0).toFixed(2)}</b>. Minimum request: ৳300. Protected wallet reserve: ৳100.</div>
+                )}
                 <form className="row g-2 mb-3" onSubmit={requestWithdrawal}>
                   <div className="col-12 col-md-4">
-                    <input type="number" className="form-control" placeholder="Amount" value={withdrawForm.amount} onChange={(e) => setWithdrawForm((p) => ({ ...p, amount: e.target.value }))} />
+                    <input type="number" min="300" step="1" className="form-control" placeholder="Minimum ৳300" value={withdrawForm.amount} onChange={(e) => setWithdrawForm((p) => ({ ...p, amount: e.target.value }))} required />
                   </div>
                   <div className="col-12 col-md-5">
                     <input className="form-control" placeholder="Note" value={withdrawForm.note} onChange={(e) => setWithdrawForm((p) => ({ ...p, note: e.target.value }))} />
                   </div>
                   <div className="col-12 col-md-3">
-                    <button className="btn eco-btn w-100">Request Withdraw</button>
+                    <button className="btn eco-btn w-100" disabled={!wallet.payout_method || Number(wallet.withdrawable_balance || 0) < 300}>Request Withdraw</button>
                   </div>
                 </form>
                 <div className="table-responsive">
@@ -484,7 +716,7 @@ export default function PartnerDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map((order) => (
+                      {historyRows.items.map((order) => (
                         <tr key={order.id}>
                           <td>{order.booking_code}</td>
                           <td>{order.customer_name}</td>
@@ -500,6 +732,7 @@ export default function PartnerDashboard() {
                     </tbody>
                   </table>
                 </div>
+                <DashboardPagination page={historyRows.page} pages={historyRows.pages} onChange={setHistoryPage} />
               </div>
             )}
 
@@ -569,6 +802,60 @@ export default function PartnerDashboard() {
           setAttachment(null);
         }}
       />
+      {finalPaymentOrder && (
+        <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => !finalPaymentSaving && setFinalPaymentOrder(null)}>
+          <div className="payout-modal final-payment-modal" role="dialog" aria-modal="true" aria-labelledby="final-payment-title" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
+              <div>
+                <span className="badge bg-success mb-2">Work Payment</span>
+                <h5 id="final-payment-title" className="mb-1">Set Final Payment</h5>
+                <div className="small-muted">The customer must verify this amount before making payment.</div>
+              </div>
+              <button type="button" className="btn-close" aria-label="Close" disabled={finalPaymentSaving} onClick={() => setFinalPaymentOrder(null)} />
+            </div>
+            <div className="dashboard-detail-grid mb-4">
+              <div className="dashboard-detail-item"><span>Booking</span><strong>{finalPaymentOrder.booking_code}</strong></div>
+              <div className="dashboard-detail-item"><span>Customer</span><strong>{finalPaymentOrder.customer_name}</strong></div>
+              <div className="dashboard-detail-item"><span>Service</span><strong>{serviceLabelMap[finalPaymentOrder.category] || finalPaymentOrder.category}</strong></div>
+              <div className="dashboard-detail-item"><span>Current Status</span><strong>{finalPaymentOrder.status}</strong></div>
+            </div>
+            <form onSubmit={(event) => { event.preventDefault(); saveWorkAmount(finalPaymentOrder.id); }}>
+              <label className="form-label" htmlFor="final-payment-amount">Final payment amount (৳)</label>
+              <div className="input-group mb-2">
+                <span className="input-group-text">৳</span>
+                <input id="final-payment-amount" type="number" min="1" step="0.01" className="form-control" placeholder="Enter agreed final amount" value={workAmounts[finalPaymentOrder.id] || ""} onChange={(e) => setWorkAmounts((previous) => ({ ...previous, [finalPaymentOrder.id]: e.target.value }))} autoFocus required />
+              </div>
+              <div className="small-muted mb-4">Confirm the amount agreed with the customer. The customer will see it as pending verification.</div>
+              <div className="d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-light" disabled={finalPaymentSaving} onClick={() => setFinalPaymentOrder(null)}>Cancel</button>
+                <button className="btn eco-btn" disabled={finalPaymentSaving}>{finalPaymentSaving ? "Saving..." : "Set Payment"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showPayoutModal && (
+        <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setShowPayoutModal(false)}>
+          <div className="payout-modal" role="dialog" aria-modal="true" aria-labelledby="payout-wallet-title" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="d-flex justify-content-between align-items-start mb-3">
+              <div><h5 id="payout-wallet-title" className="mb-1">Withdrawal Wallet</h5><div className="small-muted">Admin will send approved withdrawals to this account.</div></div>
+              <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowPayoutModal(false)} />
+            </div>
+            <form onSubmit={savePayoutMethod}>
+              <label className="form-label">Payment Method</label>
+              <select className="form-select mb-3" value={payoutForm.method} onChange={(e) => setPayoutForm((p) => ({ ...p, method: e.target.value }))}>
+                <option value="BKASH">bKash</option><option value="NAGAD">Nagad</option><option value="ROCKET">Rocket</option><option value="BANK">Bank Account</option>
+              </select>
+              <label className="form-label">Account Holder Name</label>
+              <input className="form-control mb-3" maxLength="120" value={payoutForm.account_name} onChange={(e) => setPayoutForm((p) => ({ ...p, account_name: e.target.value }))} required />
+              <label className="form-label">{payoutForm.method === "BANK" ? "Account Number" : "Mobile Account Number"}</label>
+              <input className="form-control mb-3" maxLength="80" placeholder={payoutForm.method === "BANK" ? "Bank account number" : "01XXXXXXXXX"} value={payoutForm.account_number} onChange={(e) => setPayoutForm((p) => ({ ...p, account_number: e.target.value }))} required />
+              {payoutForm.method === "BANK" && <div className="row g-3 mb-3"><div className="col-md-6"><label className="form-label">Bank Name</label><input className="form-control" maxLength="120" value={payoutForm.bank_name} onChange={(e) => setPayoutForm((p) => ({ ...p, bank_name: e.target.value }))} required /></div><div className="col-md-6"><label className="form-label">Branch Name</label><input className="form-control" maxLength="120" value={payoutForm.branch_name} onChange={(e) => setPayoutForm((p) => ({ ...p, branch_name: e.target.value }))} required /></div><div className="col-12"><label className="form-label">Routing Number (optional)</label><input className="form-control" maxLength="50" value={payoutForm.routing_number} onChange={(e) => setPayoutForm((p) => ({ ...p, routing_number: e.target.value }))} /></div></div>}
+              <div className="d-flex justify-content-end gap-2"><button type="button" className="btn btn-light" onClick={() => setShowPayoutModal(false)}>Cancel</button><button className="btn eco-btn" disabled={payoutSaving}>{payoutSaving ? "Saving..." : "Save Wallet"}</button></div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

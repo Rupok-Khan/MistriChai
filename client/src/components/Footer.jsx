@@ -84,7 +84,7 @@ export default function Footer() {
       <div className="footer__divider" />
 
       <div className="footer__bottom">
-        2024 “ondemand” All Rights Reserved
+        © {new Date().getFullYear()} OnDemand. All rights reserved.
       </div>
     </footer>
   );

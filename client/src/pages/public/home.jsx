@@ -36,6 +36,15 @@ export default function Home() {
   const home = content?.home;
   const promo = content?.promo;
   const contact = content?.contact;
+  const whyChoose = content?.whyChoose || {};
+  const reviews = Array.isArray(content?.reviews) ? content.reviews.slice(0, 7) : [];
+
+  const resolveContentImage = (imageUrl, fallback) => {
+    const value = String(imageUrl || "").trim();
+    if (!value) return fallback;
+    if (/^(https?:|data:|blob:)/.test(value)) return value;
+    return `${API_BASE}${value.startsWith("/") ? "" : "/"}${value}`;
+  };
 
   const resolveServiceImage = (item, index = 0) => {
     const uploaded = String(item?.imageUrl || "").trim();
@@ -53,6 +62,8 @@ export default function Home() {
   return (
     <div className="home-wrap">
       <section className="home-hero">
+        <div className="home-hero-orb home-hero-orb-one" aria-hidden="true" />
+        <div className="home-hero-orb home-hero-orb-two" aria-hidden="true" />
         <div className="container">
           <div className="row align-items-center gy-4">
             <div className="col-12 col-lg-6">
@@ -82,11 +93,15 @@ export default function Home() {
 
             <div className="col-12 col-lg-6">
               <div className="hero-media">
-                <img className="hero-img" src={home?.heroImageUrl?.trim() || heroImg} alt={home?.heroImageAlt || "Service professionals"} />
+                <div className="hero-graphic-ring" aria-hidden="true" />
+                <img className="hero-img" src={resolveContentImage(home?.heroImageUrl, heroImg)} alt={home?.heroImageAlt || "Service professionals"} />
                 <div className="hero-card hero-card-1">
                   <div className="hero-card-title">Trusted service</div>
                   <div className="hero-card-text">NID verified partners</div>
                 </div>
+                <div className="hero-float-symbol hero-float-symbol-one" aria-hidden="true">✓</div>
+                <div className="hero-float-symbol hero-float-symbol-two" aria-hidden="true">⌂</div>
+                <div className="hero-float-symbol hero-float-symbol-three" aria-hidden="true">⚙</div>
               </div>
             </div>
           </div>
@@ -116,11 +131,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container section-pad">
+      <section className="container section-pad home-services-section">
         <div className="services-showcase eco-card p-3 p-md-4">
           <div className="row g-4 align-items-stretch">
             <div className="col-12 col-lg-5">
               <div className="h-100">
+                <div className="home-services-eyebrow">Featured services</div>
                 <h2 className="fw-bold services-title">
                   We Always Provide The <br className="d-none d-md-block" />
                   Best Service
@@ -171,8 +187,9 @@ export default function Home() {
                 ))}
               </div>
 
-              <div className="small-muted mt-3">
-                Want more? <Link to="/services">View all services</Link>
+              <div className="home-services-more mt-4">
+                <span className="small-muted">Want to explore more options?</span>
+                <Link className="btn eco-btn home-services-more-btn" to="/services">View All Services</Link>
               </div>
             </div>
           </div>
@@ -180,9 +197,9 @@ export default function Home() {
       </section>
 
       <TeamSection />
-      <HomeHero content={promo} />
+      <HomeHero content={{ ...promo, leftImageUrl: resolveContentImage(promo?.leftImageUrl, ""), rightImageUrl: resolveContentImage(promo?.rightImageUrl, "") }} />
 
-      <section className="container section-pad">
+      <section className="container section-pad home-popular-section">
         <div className="text-center mb-4">
           <h2 className="fw-bold">Popular categories</h2>
           <p className="small-muted">Pick a service and continue</p>
@@ -191,7 +208,7 @@ export default function Home() {
         <div className="row g-3">
           {popular.map((item) => (
             <div key={item.key} className="col-12 col-md-6 col-lg-3">
-              <div className="eco-card p-4 h-100">
+              <div className="eco-card p-4 h-100 home-category-card">
                 <div className="eco-badge d-inline-block mb-2">{item.title}</div>
                 <div className="small-muted">{item.desc}</div>
                 <Link className="btn eco-btn-outline w-100 mt-3" to="/services">View</Link>
@@ -199,6 +216,31 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        <section className="home-why-section home-contained-section mt-5">
+          <div className="row g-4 align-items-center">
+            <div className="col-12 col-lg-5">
+              <div className="home-services-eyebrow">{whyChoose.kicker || "Why choose us"}</div>
+              <h2 className="fw-bold display-6">{whyChoose.title || "Service you can trust, from booking to completion"}</h2>
+              <p className="small-muted mb-0">{whyChoose.description || "A safer and simpler way to find skilled help for your home."}</p>
+            </div>
+            <div className="col-12 col-lg-7"><div className="why-feature-grid">{[
+              ["01", whyChoose.itemOneTitle || "Verified professionals", whyChoose.itemOneText || "Partner identity and service information are reviewed before approval."],
+              ["02", whyChoose.itemTwoTitle || "Clear service workflow", whyChoose.itemTwoText || "Track every step from your dashboard."],
+              ["03", whyChoose.itemThreeTitle || "Local and responsive", whyChoose.itemThreeText || "Find nearby technicians with live availability."]
+            ].map(([number, title, text]) => <article className="why-feature-card" key={number}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div></div>
+          </div>
+        </section>
+
+        {reviews.length > 0 && <section className="home-reviews-section home-contained-section mt-4">
+          <div className="text-center mb-4"><div className="home-services-eyebrow">Customer stories</div><h2 className="fw-bold">What our customers say</h2><p className="small-muted mb-0">Real experiences shared by people using OnDemand.</p></div>
+          <div className="review-marquee" aria-label="Customer reviews"><div className="review-marquee-track">
+            {[...reviews, ...reviews].map((review, index) => <article className="modern-review-card" key={`${review.name}-${index}`} aria-hidden={index >= reviews.length}>
+              <div className="review-quote">“</div><div className="review-stars">{"★".repeat(Math.max(1, Math.min(5, Number(review.rating) || 5)))}</div><p>{review.text}</p>
+              <div className="review-person"><div className="review-avatar">{String(review.name || "C").charAt(0)}</div><div><strong>{review.name}</strong><span>{review.role || "Customer"}</span></div></div>
+            </article>)}
+          </div></div>
+        </section>}
 
         <HomeContactSection content={contact} />
       </section>

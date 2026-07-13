@@ -9,6 +9,7 @@ const DEFAULT_SERVICE_OPTIONS = [
 ];
 
 const DEFAULT_SITE_SETTINGS = {
+  preferences: { language: "ENGLISH" },
   services: DEFAULT_SERVICE_OPTIONS,
   home: {
     heroKicker: "Quality service at a fair price",
@@ -41,6 +42,26 @@ const DEFAULT_SITE_SETTINGS = {
     leftImageUrl: "",
     rightImageUrl: ""
   },
+  whyChoose: {
+    kicker: "Why choose us",
+    title: "Service you can trust, from booking to completion",
+    description: "A safer and simpler way to find skilled help for your home.",
+    itemOneTitle: "Verified professionals",
+    itemOneText: "Partner identity and service information are reviewed before approval.",
+    itemTwoTitle: "Clear service workflow",
+    itemTwoText: "Track booking, assignment, chat, payment and completion from your dashboard.",
+    itemThreeTitle: "Local and responsive",
+    itemThreeText: "Find technicians by district, thana and ward with live availability status."
+  },
+  reviews: [
+    { name: "Nusrat Jahan", role: "Customer", rating: "5", text: "The technician arrived on time and explained the repair clearly. The full process felt safe and simple." },
+    { name: "Tanvir Ahmed", role: "Customer", rating: "5", text: "I found an available AC technician in my area quickly. Chat and payment updates were very helpful." },
+    { name: "Farhana Islam", role: "Customer", rating: "5", text: "Booking was easy and the partner was professional. I could follow every step from my dashboard." },
+    { name: "Mahmud Hasan", role: "Customer", rating: "4", text: "A clean and reliable service experience. The admin verification gave me extra confidence." },
+    { name: "Sadia Rahman", role: "Customer", rating: "5", text: "The home cleaning service was excellent and communication with the partner was smooth." },
+    { name: "Rakib Hossain", role: "Customer", rating: "5", text: "The location filter helped me find the right technician nearby without wasting time." },
+    { name: "Mim Akter", role: "Customer", rating: "5", text: "Transparent payment status and fast support made the entire experience much better." }
+  ],
   contact: {
     pageTitle: "Contact",
     pageSubtitle: "Send a message and our team will respond as soon as possible.",

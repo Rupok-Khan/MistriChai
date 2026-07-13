@@ -4,7 +4,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:partners": "node seedDemoPartners.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -13,7 +13,7 @@ router.post(
     body("email").isEmail(),
     body("mobile").notEmpty(),
     body("address").notEmpty(),
-    body("password").isLength({ min: 6 })
+    body("password").isLength({ min: 8, max: 128 })
   ],
   Auth.customerSignup
 );

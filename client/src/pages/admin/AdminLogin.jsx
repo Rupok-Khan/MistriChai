@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AdminService } from "../../services/admin.service";
-import { setAdminAuth } from "../../utils/adminAuth";
+import { getAdminToken, getAdminUser, setAdminAuth } from "../../utils/adminAuth";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -16,6 +16,12 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (getAdminToken() && getAdminUser()?.role === "ADMIN") {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [navigate]);
 
   const submit = async (e) => {
     e.preventDefault();

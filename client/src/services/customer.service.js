@@ -18,6 +18,14 @@ export const CustomerService = {
       body: payload
     }),
   bookings: () => apiFetch("/api/customer/bookings"),
+  cancellationRequests: () => apiFetch("/api/customer/cancellation-requests"),
+  requestCancellation: (id, payload) =>
+    apiFetch(`/api/customer/bookings/${id}/cancellation-request`, {
+      method: "POST",
+      body: payload
+    }),
+  requestPartnerChange: (id, payload) => apiFetch(`/api/customer/bookings/${id}/partner-change-request`, { method: "POST", body: payload }),
+  selectReplacementPartner: (id, partnerUserId) => apiFetch(`/api/customer/bookings/${id}/replacement-partner`, { method: "PATCH", body: { partner_user_id: partnerUserId } }),
   bookingMessages: (id) => apiFetch(`/api/customer/bookings/${id}/messages`),
   sendMessage: (id, payload) =>
     apiFetch(`/api/customer/bookings/${id}/messages`, {
@@ -41,4 +49,7 @@ export const CustomerService = {
       body: payload
     }),
   payments: () => apiFetch("/api/customer/payments")
+  ,workPayments: () => apiFetch("/api/customer/work-payments"),
+  approveWorkAmount: (id) => apiFetch(`/api/customer/work-payments/${id}/approve-amount`, { method: "PATCH", body: {} }),
+  submitWorkPayment: (id, payload) => apiFetch(`/api/customer/work-payments/${id}/submit`, { method: "POST", body: payload })
 };

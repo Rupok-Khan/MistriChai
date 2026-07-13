@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { AdminService } from "../../services/admin.service";
 import { clearAdminAuth } from "../../utils/adminAuth";
 import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions } from "../../utils/serviceCatalog";
+import DashboardPagination from "../../components/DashboardPagination";
+import { paginate } from "../../utils/pagination";
 
 function EmptyRow({ colSpan, text }) {
   return (
@@ -21,6 +23,14 @@ function SidebarButton({ active, label, count, onClick }) {
   );
 }
 
+function bookingStatusLabel(status) {
+  if (["PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER"].includes(status)) return "Pending";
+  if (status === "PAYMENT_PENDING") return "Payment Pending";
+  if (status === "ASSIGNED") return "Assigned";
+  if (status === "IN_PROGRESS") return "In Progress";
+  return String(status || "Unknown").replaceAll("_", " ");
+}
+
 export default function AdminDashboard() {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [dashboard, setDashboard] = useState({
@@ -30,23 +40,39 @@ export default function AdminDashboard() {
     customers: [],
     partners: [],
     bookings: [],
-    withdrawals: []
+    withdrawals: [],
+    changeRequests: [],
+    bookingFees: [],
+    bookingFeeSummary: {}
+    ,workPayments: []
   });
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [assignForm, setAssignForm] = useState({});
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingPage, setBookingPage] = useState(1);
+  const [bookingFeeSearch, setBookingFeeSearch] = useState("");
+  const [bookingFeePage, setBookingFeePage] = useState(1);
+  const [listPages, setListPages] = useState({ changes:1, customers:1, partners:1, withdrawals:1 });
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const [refundForm, setRefundForm] = useState({});
+  const [changeRequestNotes, setChangeRequestNotes] = useState({});
+  const [selectedChangeRequest, setSelectedChangeRequest] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [editingPartnerId, setEditingPartnerId] = useState(null);
   const [customerForm, setCustomerForm] = useState({});
   const [partnerForm, setPartnerForm] = useState({});
   const [siteForm, setSiteForm] = useState({});
   const [siteSaving, setSiteSaving] = useState(false);
+  const [siteEditor, setSiteEditor] = useState(null);
+  const [heroImageFile, setHeroImageFile] = useState(null);
+  const [promoImageFiles, setPromoImageFiles] = useState({ left: null, right: null });
   const [contacts, setContacts] = useState([]);
   const [replyForm, setReplyForm] = useState({});
   const [replyLoading, setReplyLoading] = useState({});
   const [editingServiceKey, setEditingServiceKey] = useState(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
   const [serviceDraft, setServiceDraft] = useState({
     key: "",
     title: "",
@@ -55,6 +81,10 @@ export default function AdminDashboard() {
     imageFile: null,
     removeImage: false
   });
+  const updateReview = (index, field, value) => setSiteForm((prev) => ({
+    ...prev,
+    reviews: (prev.reviews || []).map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item)
+  }));
   const navigate = useNavigate();
 
   const load = async () => {
@@ -89,6 +119,28 @@ export default function AdminDashboard() {
     [siteForm.services, dashboard.siteSettings?.services]
   );
   const serviceLabelMap = useMemo(() => buildServiceLabelMap(serviceOptions), [serviceOptions]);
+  const filteredBookings = useMemo(() => (dashboard.bookings || []).filter((booking) => {
+    const query = bookingSearch.trim().toLowerCase();
+    return !query || String(booking.booking_code || booking.id || "").toLowerCase().includes(query)
+      || String(booking.id || "").includes(query)
+      || String(booking.customer_name || "").toLowerCase().includes(query);
+  }), [dashboard.bookings, bookingSearch]);
+  const bookingRows = paginate(filteredBookings, bookingPage, 7);
+  const filteredBookingFees = useMemo(() => (dashboard.bookingFees || [])
+    .slice()
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .filter((item) => {
+      const query = bookingFeeSearch.trim().toLowerCase();
+      return !query || String(item.booking_code || item.booking_id || "").toLowerCase().includes(query)
+        || String(item.booking_id || "").includes(query)
+        || String(item.customer_name || "").toLowerCase().includes(query);
+    }), [dashboard.bookingFees, bookingFeeSearch]);
+  const bookingFeeRows = paginate(filteredBookingFees, bookingFeePage, 7);
+  const changeRows = paginate(dashboard.changeRequests, listPages.changes, 6);
+  const customerRows = paginate(dashboard.customers, listPages.customers, 7);
+  const partnerRows = paginate(dashboard.partners, listPages.partners, 7);
+  const withdrawalRows = paginate(dashboard.withdrawals, listPages.withdrawals, 7);
+  const setListPage = (key, page) => setListPages((previous) => ({...previous,[key]:page}));
 
   const menuItems = [
     { key: "overview", label: "Overview" },
@@ -96,6 +148,9 @@ export default function AdminDashboard() {
     { key: "services", label: "Services", count: serviceOptions.length },
     { key: "pending", label: "Partner Review", count: dashboard.pendingPartners?.length || 0 },
     { key: "bookings", label: "Bookings", count: dashboard.bookings?.length || 0 },
+    { key: "changeRequests", label: "Cancel / Reject Requests", count: dashboard.changeRequests?.filter((item) => item.status === "PENDING").length || 0 },
+    { key: "bookingFees", label: "Booking Fees", count: dashboard.bookingFees?.length || 0 },
+    { key: "workPayments", label: "Work Payments", count: dashboard.workPayments?.filter((x) => x.status === "PENDING").length || 0 },
     { key: "customers", label: "Customers", count: dashboard.customers?.length || 0 },
     { key: "partners", label: "Partners", count: dashboard.partners?.length || 0 },
     { key: "messages", label: "Messages", count: contacts.length },
@@ -107,10 +162,10 @@ export default function AdminDashboard() {
     navigate("/admin/login", { replace: true });
   };
 
-  const assignBooking = async (bookingId) => {
+  const assignBooking = async (bookingId, requestedPartnerId) => {
     try {
       await AdminService.assignBooking(bookingId, {
-        partner_user_id: Number(assignForm[bookingId]),
+        partner_user_id: Number(assignForm[bookingId] || requestedPartnerId),
         admin_note: "Assigned by admin dashboard"
       });
       await load();
@@ -119,10 +174,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const approveBookingPayment = async (bookingId) => {
+    try {
+      setErr("");
+      await AdminService.approveBookingPayment(bookingId);
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+  const approveWorkPayment = async (id) => { try { await AdminService.approveWorkPayment(id); await load(); } catch (e) { setErr(e.message); } };
+
   const refundBooking = async (bookingId) => {
     try {
       await AdminService.refundBooking(bookingId, {
         admin_note: refundForm[bookingId] || "Partner unavailable, booking fee refunded."
+      });
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
+  const reviewChangeRequest = async (requestId, action) => {
+    try {
+      setErr("");
+      await AdminService.reviewBookingChangeRequest(requestId, {
+        action,
+        admin_note: changeRequestNotes[requestId] || ""
       });
       await load();
     } catch (e) {
@@ -227,15 +306,35 @@ export default function AdminDashboard() {
     try {
       setSiteSaving(true);
       setErr("");
-      const res = await AdminService.updateSiteContent(siteForm);
+      let payload = siteForm;
+      if (heroImageFile || promoImageFiles.left || promoImageFiles.right) {
+        payload = new FormData();
+        payload.append("settings", JSON.stringify(siteForm));
+        if (heroImageFile) payload.append("hero_image", heroImageFile);
+        if (promoImageFiles.left) payload.append("promo_left_image", promoImageFiles.left);
+        if (promoImageFiles.right) payload.append("promo_right_image", promoImageFiles.right);
+      }
+      const res = await AdminService.updateSiteContent(payload);
       const updatedSettings = res.data || {};
       setSiteForm(updatedSettings);
       setDashboard((prev) => ({ ...prev, siteSettings: updatedSettings }));
+      setHeroImageFile(null);
+      setPromoImageFiles({ left: null, right: null });
     } catch (e) {
       setErr(e.message);
     } finally {
       setSiteSaving(false);
     }
+  };
+
+  const changeSiteLanguage = async (language) => {
+    try {
+      setSiteSaving(true);
+      const next = { ...siteForm, preferences: { ...(siteForm.preferences || {}), language } };
+      const res = await AdminService.updateSiteContent(next);
+      setSiteForm(res.data || next);
+      window.location.reload();
+    } catch (e) { setErr(e.message); setSiteSaving(false); }
   };
 
   const replyToContact = async (id) => {
@@ -280,6 +379,7 @@ export default function AdminDashboard() {
       imageFile: null,
       removeImage: false
     });
+    setShowServiceModal(true);
   };
 
   const resolveImageSrc = (url) => {
@@ -307,6 +407,7 @@ export default function AdminDashboard() {
         await AdminService.createService(payload);
       }
       resetServiceDraft();
+      setShowServiceModal(false);
       await load();
     } catch (e) {
       setErr(e.message);
@@ -362,6 +463,8 @@ export default function AdminDashboard() {
               {activeSection === "services" && "Service Catalog"}
               {activeSection === "pending" && "Partner Review"}
               {activeSection === "bookings" && "Bookings and Assignment"}
+              {activeSection === "changeRequests" && "Cancellation and Rejection Requests"}
+              {activeSection === "bookingFees" && "Booking Fees"}
               {activeSection === "customers" && "Customer Management"}
               {activeSection === "partners" && "Partner Management"}
               {activeSection === "messages" && "Support Messages"}
@@ -372,7 +475,9 @@ export default function AdminDashboard() {
               {activeSection === "site" && "Update homepage, about page, and contact information."}
               {activeSection === "services" && "Add, edit, or delete service categories used across the platform."}
               {activeSection === "pending" && "Review newly submitted partner applications."}
-              {activeSection === "bookings" && "Assign technicians and handle refund requests."}
+              {activeSection === "bookings" && "Verify bKash service charges, then assign technicians or handle refunds."}
+              {activeSection === "changeRequests" && "Review customer cancellations and partner job rejections, including submitted proof."}
+              {activeSection === "bookingFees" && "Track pending, collected, refunded, and net platform booking fees."}
               {activeSection === "customers" && "Edit customer accounts and profile details."}
               {activeSection === "partners" && "Update partner profiles, status, and availability."}
               {activeSection === "messages" && "Read support messages and reply directly to customers or partners."}
@@ -392,6 +497,8 @@ export default function AdminDashboard() {
             {[
               ["Pending Partners", dashboard.summary?.pending_partners || 0],
               ["Total Bookings", dashboard.summary?.total_bookings || 0],
+              ["Booking Fee Revenue", `৳${Number(dashboard.summary?.booking_fee_revenue || 0).toFixed(0)}`],
+              ["Pending Cancel / Reject", dashboard.summary?.pending_change_requests || 0],
               ["Active Bookings", dashboard.summary?.active_bookings || 0],
               ["Refund Cases", dashboard.summary?.refund_cases || 0],
               ["Customers", dashboard.summary?.total_customers || 0],
@@ -439,13 +546,12 @@ export default function AdminDashboard() {
                 <div className="fw-bold">Site Content</div>
                 <div className="small-muted">Edit homepage hero text, promo images, contact information, address, and about-page copy.</div>
               </div>
-              <button className="btn eco-btn" onClick={saveSiteContent} disabled={siteSaving}>
-                {siteSaving ? "Saving..." : "Save Content"}
-              </button>
+              <div className="language-control"><span><b>Website Language</b><small>Switch the entire website language</small></span><div className="btn-group"><button className={`btn btn-sm ${siteForm.preferences?.language !== "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("ENGLISH")}>English</button><button className={`btn btn-sm ${siteForm.preferences?.language === "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("BANGLA")}>বাংলা</button></div></div>
             </div>
+            <div className="site-content-grid">{[["home","Home Hero","Hero text, images, buttons and highlights"],["why","Why Choose Us","Homepage trust points"],["reviews","Reviews","Seven animated customer reviews"],["promo","Promo Section","Homepage promotional content"],["about","About Page","Mission, vision and about copy"],["contact","Contact Details","Support and contact information"]].map(([key,title,description]) => <button type="button" className="site-content-card" key={key} onClick={() => setSiteEditor(key)}><span className="site-content-icon">{title.charAt(0)}</span><span><b>{title}</b><small>{description}</small></span><span className="site-content-arrow">→</span></button>)}</div>
 
-            <div className="row g-4">
-              <div className="col-12">
+            {siteEditor && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSiteEditor(null)}><div className="payout-modal site-content-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">Edit Site Content</h5><div className="small-muted">Update this section and save your changes.</div></div><button className="btn-close" aria-label="Close" onClick={() => setSiteEditor(null)} /></div><div className="row g-4 site-editor-content" data-section={siteEditor}>
+              <div className="col-12 site-home">
                 <div className="border rounded-4 p-3">
                   <div className="fw-bold mb-3">Home Hero</div>
                   <div className="row g-2">
@@ -459,7 +565,10 @@ export default function AdminDashboard() {
                       <textarea className="form-control" rows="3" placeholder="Hero subtitle" value={siteForm.home?.heroSubtitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, home: { ...p.home, heroSubtitle: e.target.value } }))} />
                     </div>
                     <div className="col-12 col-md-6">
-                      <input className="form-control" placeholder="Hero image URL" value={siteForm.home?.heroImageUrl || ""} onChange={(e) => setSiteForm((p) => ({ ...p, home: { ...p.home, heroImageUrl: e.target.value } }))} />
+                      <label className="form-label" htmlFor="hero-image-upload">Hero image</label>
+                      <input id="hero-image-upload" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setHeroImageFile(e.target.files?.[0] || null)} />
+                      <div className="small-muted mt-1">JPG, PNG, WebP, HEIC or AVIF. Maximum 5MB.</div>
+                      {(heroImageFile || siteForm.home?.heroImageUrl) && <img className="site-hero-image-preview mt-3" src={heroImageFile ? URL.createObjectURL(heroImageFile) : siteForm.home.heroImageUrl.startsWith("http") ? siteForm.home.heroImageUrl : `${API_BASE}${siteForm.home.heroImageUrl}`} alt="Current hero preview" />}
                     </div>
                     <div className="col-12 col-md-6">
                       <input className="form-control" placeholder="Hero image alt text" value={siteForm.home?.heroImageAlt || ""} onChange={(e) => setSiteForm((p) => ({ ...p, home: { ...p.home, heroImageAlt: e.target.value } }))} />
@@ -507,7 +616,39 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="col-12 col-xl-6">
+              <div className="col-12 site-why">
+                <div className="border rounded-4 p-3">
+                  <div className="fw-bold mb-1">Why Choose Us</div>
+                  <div className="small-muted mb-3">Edit the three homepage trust points.</div>
+                  <div className="row g-2">
+                    {["kicker","title","description","itemOneTitle","itemOneText","itemTwoTitle","itemTwoText","itemThreeTitle","itemThreeText"].map((field) => <div className={field.includes("Text") || field === "description" ? "col-12" : "col-12 col-md-6"} key={field}>
+                      <input className="form-control" placeholder={field.replace(/([A-Z])/g, " $1")} value={siteForm.whyChoose?.[field] || ""} onChange={(e) => setSiteForm((p) => ({ ...p, whyChoose: { ...p.whyChoose, [field]: e.target.value } }))} />
+                    </div>)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12 site-reviews">
+                <div className="border rounded-4 p-3">
+                  <div className="fw-bold mb-1">Homepage Reviews</div>
+                  <div className="small-muted mb-3">Seven cards are shown in the animated review row.</div>
+                  <div className="row g-3">
+                    {(siteForm.reviews || []).slice(0, 7).map((review, index) => <div className="col-12 col-lg-6" key={index}>
+                      <div className="eco-card p-3 h-100">
+                        <div className="fw-semibold mb-2">Review {index + 1}</div>
+                        <div className="row g-2">
+                          <div className="col-8"><input className="form-control" placeholder="Customer name" value={review.name || ""} onChange={(e) => updateReview(index, "name", e.target.value)} /></div>
+                          <div className="col-4"><select className="form-select" value={review.rating || "5"} onChange={(e) => updateReview(index, "rating", e.target.value)}>{[5,4,3,2,1].map((rating) => <option key={rating}>{rating}</option>)}</select></div>
+                          <div className="col-12"><input className="form-control" placeholder="Role or location" value={review.role || ""} onChange={(e) => updateReview(index, "role", e.target.value)} /></div>
+                          <div className="col-12"><textarea className="form-control" rows="3" placeholder="Review text" value={review.text || ""} onChange={(e) => updateReview(index, "text", e.target.value)} /></div>
+                        </div>
+                      </div>
+                    </div>)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12 site-promo">
                 <div className="border rounded-4 p-3 h-100">
                   <div className="fw-bold mb-3">Promo Section</div>
                   <div className="row g-2">
@@ -526,17 +667,23 @@ export default function AdminDashboard() {
                     <div className="col-12 col-md-6">
                       <input className="form-control" placeholder="Button link" value={siteForm.promo?.buttonLink || ""} onChange={(e) => setSiteForm((p) => ({ ...p, promo: { ...p.promo, buttonLink: e.target.value } }))} />
                     </div>
-                    <div className="col-12">
-                      <input className="form-control" placeholder="Left image URL" value={siteForm.promo?.leftImageUrl || ""} onChange={(e) => setSiteForm((p) => ({ ...p, promo: { ...p.promo, leftImageUrl: e.target.value } }))} />
+                    <div className="col-12 col-md-6">
+                      <label className="form-label" htmlFor="promo-left-image">Left promo image</label>
+                      <input id="promo-left-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setPromoImageFiles((previous) => ({ ...previous, left: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">JPG, PNG, WebP, HEIC or AVIF. Maximum 5MB.</div>
+                      {(promoImageFiles.left || siteForm.promo?.leftImageUrl) && <img className="site-hero-image-preview mt-3" src={promoImageFiles.left ? URL.createObjectURL(promoImageFiles.left) : siteForm.promo.leftImageUrl.startsWith("http") ? siteForm.promo.leftImageUrl : `${API_BASE}${siteForm.promo.leftImageUrl}`} alt="Left promo preview" />}
                     </div>
-                    <div className="col-12">
-                      <input className="form-control" placeholder="Right image URL" value={siteForm.promo?.rightImageUrl || ""} onChange={(e) => setSiteForm((p) => ({ ...p, promo: { ...p.promo, rightImageUrl: e.target.value } }))} />
+                    <div className="col-12 col-md-6">
+                      <label className="form-label" htmlFor="promo-right-image">Right promo image</label>
+                      <input id="promo-right-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setPromoImageFiles((previous) => ({ ...previous, right: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">JPG, PNG, WebP, HEIC or AVIF. Maximum 5MB.</div>
+                      {(promoImageFiles.right || siteForm.promo?.rightImageUrl) && <img className="site-hero-image-preview mt-3" src={promoImageFiles.right ? URL.createObjectURL(promoImageFiles.right) : siteForm.promo.rightImageUrl.startsWith("http") ? siteForm.promo.rightImageUrl : `${API_BASE}${siteForm.promo.rightImageUrl}`} alt="Right promo preview" />}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="col-12 col-xl-6">
+              <div className="col-12 site-about">
                 <div className="border rounded-4 p-3 h-100">
                   <div className="fw-bold mb-3">About Page</div>
                   <div className="row g-2">
@@ -562,7 +709,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="col-12">
+              <div className="col-12 site-contact">
                 <div className="border rounded-4 p-3">
                   <div className="fw-bold mb-3">Contact Details</div>
                   <div className="row g-2">
@@ -603,110 +750,18 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+            <div className="d-flex justify-content-end gap-2 mt-3"><button className="btn btn-light" onClick={() => setSiteEditor(null)}>Cancel</button><button className="btn eco-btn" onClick={async () => { await saveSiteContent(); setSiteEditor(null); }} disabled={siteSaving}>{siteSaving ? "Saving..." : "Save Changes"}</button></div>
+            </div></div>}
           </div>
           )}
 
           {activeSection === "services" && (
           <div className="eco-card p-4 mb-3">
-            <div className="row g-3">
-              <div className="col-12 col-lg-5">
-                <div className="border rounded-3 p-3 h-100">
-                  <div className="fw-bold mb-2">{editingServiceKey ? "Edit Service" : "Add New Service"}</div>
-                  <div className="row g-2">
-                    <div className="col-12">
-                      <input
-                        className="form-control"
-                        placeholder="Service key (e.g. CARPENTRY)"
-                        value={serviceDraft.key}
-                        onChange={(e) => setServiceDraft((p) => ({ ...p, key: e.target.value }))}
-                        disabled={Boolean(editingServiceKey)}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <input
-                        className="form-control"
-                        placeholder="Service title"
-                        value={serviceDraft.title}
-                        onChange={(e) => setServiceDraft((p) => ({ ...p, title: e.target.value }))}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <textarea
-                        className="form-control"
-                        rows="3"
-                        placeholder="Short service description"
-                        value={serviceDraft.desc}
-                        onChange={(e) => setServiceDraft((p) => ({ ...p, desc: e.target.value }))}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <input
-                        type="file"
-                        className="form-control"
-                        accept="image/*"
-                        onChange={(e) =>
-                          setServiceDraft((p) => ({
-                            ...p,
-                            imageFile: e.target.files?.[0] || null,
-                            removeImage: false
-                          }))
-                        }
-                      />
-                      <div className="small-muted mt-1">
-                        Upload service card image (max 5MB). Leave empty to keep current image.
-                      </div>
-                    </div>
-                    {(serviceDraft.imageUrl || serviceDraft.imageFile) && (
-                      <div className="col-12">
-                        {serviceDraft.imageFile && (
-                          <div className="small-muted mb-2">Selected: {serviceDraft.imageFile.name}</div>
-                        )}
-                        {serviceDraft.imageUrl && !serviceDraft.imageFile && !serviceDraft.removeImage && (
-                          <img
-                            src={resolveImageSrc(serviceDraft.imageUrl)}
-                            alt="Service preview"
-                            className="img-fluid rounded-3 border"
-                            style={{ maxHeight: 140, objectFit: "cover" }}
-                          />
-                        )}
-                        {editingServiceKey && serviceDraft.imageUrl && !serviceDraft.imageFile && (
-                          <div className="d-flex gap-2 mt-2">
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${serviceDraft.removeImage ? "btn-outline-secondary" : "btn-outline-danger"}`}
-                              onClick={() =>
-                                setServiceDraft((p) => ({
-                                  ...p,
-                                  removeImage: !p.removeImage
-                                }))
-                              }
-                            >
-                              {serviceDraft.removeImage ? "Undo Remove Image" : "Remove Current Image"}
-                            </button>
-                            {serviceDraft.removeImage && (
-                              <div className="small-muted align-self-center">
-                                Current image will be removed after update.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <div className="col-12 d-flex gap-2">
-                      <button className="btn eco-btn btn-sm" onClick={submitService}>
-                        {editingServiceKey ? "Update Service" : "Add Service"}
-                      </button>
-                      <button className="btn eco-btn-outline btn-sm" onClick={resetServiceDraft}>
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-12 col-lg-7">
-                <div className="border rounded-3 p-3 h-100">
-                  <div className="fw-bold mb-2">Existing Services</div>
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+              <div><div className="fw-bold">Existing Services</div><div className="small-muted">Manage the services available throughout the website.</div></div>
+              <button className="btn eco-btn" onClick={() => { resetServiceDraft(); setShowServiceModal(true); }}>+ Add New Service</button>
+            </div>
+                <div className="border rounded-3 p-3">
                   <div className="table-responsive">
                     <table className="table align-middle mb-0">
                       <thead>
@@ -749,8 +804,6 @@ export default function AdminDashboard() {
                     </table>
                   </div>
                 </div>
-              </div>
-            </div>
           </div>
           )}
 
@@ -792,7 +845,14 @@ export default function AdminDashboard() {
           {activeSection === "bookings" && (
           <div className="eco-card p-0 overflow-hidden mb-3">
             <div className="p-4 pb-0">
-              <div className="fw-bold">Bookings and Assignment</div>
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div><div className="fw-bold">Bookings and Assignment</div><div className="small-muted">The customer-selected partner is preselected for quick assignment.</div></div>
+                <div className="input-group" style={{ maxWidth: 360 }}>
+                  <span className="input-group-text">Search</span>
+                  <input className="form-control" value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} placeholder="Booking ID or customer name" />
+                  {bookingSearch && <button type="button" className="btn btn-outline-secondary" onClick={() => setBookingSearch("")}>Clear</button>}
+                </div>
+              </div>
             </div>
             <div className="table-responsive">
               <table className="table mb-0 align-middle">
@@ -801,31 +861,49 @@ export default function AdminDashboard() {
                     <th>Booking</th>
                     <th>Customer</th>
                     <th>Service</th>
+                    <th>Payment</th>
                     <th>Status</th>
                     <th>Assign / Refund</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(dashboard.bookings || []).map((booking) => (
+                  {bookingRows.items.map((booking) => (
                     <tr key={booking.id}>
                       <td>{booking.booking_code}</td>
                       <td>{booking.customer_name}</td>
-                      <td>{serviceLabelMap[booking.category] || booking.category}</td>
-                      <td>{booking.status}</td>
+                      <td><div>{serviceLabelMap[booking.category] || booking.category}</div>{booking.requested_partner_first_name && <div className="small-muted">Requested: <b>{booking.requested_partner_first_name} {booking.requested_partner_last_name}</b></div>}</td>
+                      <td style={{ minWidth: 190 }}>
+                        <div><b>৳{Number(booking.booking_fee || 0).toFixed(0)}</b> via bKash</div>
+                        <div className="small-muted">TrxID: {booking.bkash_trx_id || "Not provided"}</div>
+                        <span className={`badge mt-1 ${booking.payment_status === "PAID" ? "text-bg-success" : "text-bg-warning"}`}>
+                          {booking.payment_status || "UNKNOWN"}
+                        </span>
+                        {booking.payment_status === "PENDING" && (
+                          <button className="btn eco-btn btn-sm d-block mt-2" onClick={() => approveBookingPayment(booking.id)}>
+                            Approve Payment
+                          </button>
+                        )}
+                      </td>
+                      <td><span className={`badge ${booking.status === "ASSIGNED" ? "text-bg-success" : ["PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER"].includes(booking.status) ? "text-bg-warning" : "text-bg-secondary"}`}>{bookingStatusLabel(booking.status)}</span></td>
                       <td style={{ minWidth: 320 }}>
+                        <button type="button" className="btn btn-light btn-sm mb-2" onClick={() => setSelectedBooking(booking)}>View Details</button>
                         {booking.assigned_partner_first_name ? (
                           <div className="small-muted">
                             Assigned: {booking.assigned_partner_first_name} {booking.assigned_partner_last_name}
                           </div>
                         ) : (
                           <div className="d-flex gap-2">
-                            <select className="form-select form-select-sm" value={assignForm[booking.id] || ""} onChange={(e) => setAssignForm((p) => ({ ...p, [booking.id]: e.target.value }))}>
+                            <select className="form-select form-select-sm" value={assignForm[booking.id] ?? booking.requested_partner_user_id ?? ""} onChange={(e) => setAssignForm((p) => ({ ...p, [booking.id]: e.target.value }))}>
                               <option value="">Select partner</option>
                               {partnerOptions.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
                             </select>
-                            <button className="btn eco-btn btn-sm" disabled={!assignForm[booking.id]} onClick={() => assignBooking(booking.id)}>
+                            <button
+                              className="btn eco-btn btn-sm"
+                              disabled={!(assignForm[booking.id] || booking.requested_partner_user_id) || booking.payment_status !== "PAID" || !["PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER"].includes(booking.status)}
+                              onClick={() => assignBooking(booking.id, booking.requested_partner_user_id)}
+                            >
                               Assign
                             </button>
                           </div>
@@ -839,11 +917,90 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
+                  {filteredBookings.length === 0 && <EmptyRow colSpan={6} text="No booking matches your search." />}
                 </tbody>
               </table>
             </div>
+            <DashboardPagination page={bookingRows.page} pages={bookingRows.pages} onChange={setBookingPage} />
           </div>
           )}
+
+          {activeSection === "changeRequests" && (
+          <div className="eco-card p-0 overflow-hidden mb-3">
+            <div className="p-4 pb-0">
+              <div className="fw-bold">Cancellation and Job Rejection Requests</div>
+              <div className="small-muted">Customer cancellation approval refunds the booking fee. Partner rejection approval returns the booking for reassignment.</div>
+            </div>
+            <div className="table-responsive">
+              <table className="table mb-0 align-middle compact-request-table">
+                <thead className="table-light">
+                  <tr><th>Booking / Requester</th><th>Request Type</th><th>Status</th><th className="text-end">Action</th></tr>
+                </thead>
+                <tbody>
+                  {changeRows.items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="fw-semibold">{item.booking_code}</div>
+                        <div className="small-muted">{item.requester_name} | {item.requester_mobile}</div>
+                        {item.request_type === "CUSTOMER_PARTNER_CHANGE" && item.current_partner_first_name && <div className="small-muted">Current partner: <b>{item.current_partner_first_name} {item.current_partner_last_name}</b>{item.current_partner_code ? ` (${item.current_partner_code})` : ""}</div>}
+                      </td>
+                      <td>{item.request_type === "CUSTOMER_CANCELLATION" ? "Customer Cancellation" : item.request_type === "CUSTOMER_PARTNER_CHANGE" ? "Customer Partner Change (no extra fee)" : "Partner Job Rejection"}</td>
+                      <td><span className={`badge ${item.status === "PENDING" ? "text-bg-warning" : item.status === "APPROVED" ? "text-bg-success" : "text-bg-danger"}`}>{item.status}</span></td>
+                      <td className="text-end"><button className="btn eco-btn-outline btn-sm" onClick={() => setSelectedChangeRequest(item)}>{item.status === "PENDING" ? "Review" : "View"}</button></td>
+                    </tr>
+                  ))}
+                  {(dashboard.changeRequests || []).length === 0 && <EmptyRow colSpan={4} text="No cancellation or rejection requests." />}
+                </tbody>
+                <tfoot><tr><td colSpan="4"><DashboardPagination page={changeRows.page} pages={changeRows.pages} onChange={(page) => setListPage("changes",page)} /></td></tr></tfoot>
+              </table>
+            </div>
+            {selectedChangeRequest && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSelectedChangeRequest(null)}><div className="payout-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">Review Change Request</h5><div className="small-muted">{selectedChangeRequest.booking_code}</div></div><button className="btn-close" aria-label="Close" onClick={() => setSelectedChangeRequest(null)} /></div><div className="dashboard-detail-grid mb-3"><div className="dashboard-detail-item"><span>Requester</span><b>{selectedChangeRequest.requester_name}</b><div>{selectedChangeRequest.requester_mobile}</div></div><div className="dashboard-detail-item"><span>Request Type</span><b>{selectedChangeRequest.request_type === "CUSTOMER_CANCELLATION" ? "Customer Cancellation" : selectedChangeRequest.request_type === "CUSTOMER_PARTNER_CHANGE" ? "Partner Change" : "Partner Job Rejection"}</b></div>{selectedChangeRequest.current_partner_first_name && <div className="dashboard-detail-item"><span>Current Partner</span><b>{selectedChangeRequest.current_partner_first_name} {selectedChangeRequest.current_partner_last_name}</b></div>}<div className="dashboard-detail-item"><span>Status</span><b>{selectedChangeRequest.status}</b></div></div><div className="dashboard-detail-item mb-3"><span>Reason</span><div>{selectedChangeRequest.reason}</div>{selectedChangeRequest.proof_url && <a className="d-inline-block mt-2" href={`${API_BASE}${selectedChangeRequest.proof_url}`} target="_blank" rel="noreferrer">Open submitted proof</a>}</div>{selectedChangeRequest.status === "PENDING" ? <><label className="form-label">Admin Note (optional)</label><textarea className="form-control mb-3" rows="3" value={changeRequestNotes[selectedChangeRequest.id] || ""} onChange={(e) => setChangeRequestNotes((prev) => ({...prev,[selectedChangeRequest.id]:e.target.value}))} /><div className="d-flex flex-wrap justify-content-end gap-2"><button className="btn btn-outline-danger" onClick={() => { reviewChangeRequest(selectedChangeRequest.id,"REJECT"); setSelectedChangeRequest(null); }}>Reject Request</button><button className="btn eco-btn" onClick={() => { reviewChangeRequest(selectedChangeRequest.id,"APPROVE"); setSelectedChangeRequest(null); }}>Approve</button></div></> : <div className="dashboard-detail-item"><span>Admin Note</span><div>{selectedChangeRequest.admin_note || "Reviewed without a note"}</div></div>}</div></div>}
+          </div>
+          )}
+
+          {activeSection === "bookingFees" && (
+          <div>
+            <div className="row g-3 mb-3">
+              {[
+                ["Collected", dashboard.bookingFeeSummary?.collected],
+                ["Pending Approval", dashboard.bookingFeeSummary?.pending],
+                ["Refunded", dashboard.bookingFeeSummary?.refunded],
+                ["Net Admin Revenue", dashboard.bookingFeeSummary?.net]
+              ].map(([label, value]) => (
+                <div key={label} className="col-12 col-md-6 col-xl-3">
+                  <div className="eco-card p-4 h-100">
+                    <div className="small-muted">{label}</div>
+                    <div className="fw-bold fs-3">৳{Number(value || 0).toFixed(0)}</div>
+                  </div>
+                </div>
+                      ))}
+            </div>
+            <div className="eco-card p-0 overflow-hidden mb-3">
+              <div className="p-4 pb-3 d-flex flex-wrap justify-content-between align-items-center gap-3"><div><div className="fw-bold">Booking Fee Records</div><div className="small-muted">Newest records appear first.</div></div><div className="input-group" style={{maxWidth:360}}><span className="input-group-text">Search</span><input className="form-control" placeholder="Booking ID or customer" value={bookingFeeSearch} onChange={(e) => { setBookingFeeSearch(e.target.value); setBookingFeePage(1); }} />{bookingFeeSearch && <button type="button" className="btn btn-outline-secondary" onClick={() => { setBookingFeeSearch(""); setBookingFeePage(1); }}>Clear</button>}</div></div>
+              <div className="table-responsive">
+                <table className="table mb-0 align-middle">
+                  <thead className="table-light"><tr><th>Date</th><th>Booking</th><th>Customer</th><th>TrxID</th><th>Fee Status</th><th>Refund</th></tr></thead>
+                  <tbody>
+                    {bookingFeeRows.items.map((item) => (
+                      <tr key={item.id}>
+                        <td>{new Date(item.created_at).toLocaleString()}</td>
+                        <td>{item.booking_code}<div className="small-muted">{item.booking_status}</div></td>
+                        <td>{item.customer_name}<div className="small-muted">{item.customer_mobile}</div></td>
+                        <td>{item.transaction_reference || "-"}</td>
+                        <td>৳{Number(item.amount || 0).toFixed(0)} | {item.status}</td>
+                        <td>{item.refund_status === "REFUNDED" ? `৳${Number(item.refund_amount || 0).toFixed(0)} REFUNDED` : "-"}</td>
+                      </tr>
+                      ))}
+                    {filteredBookingFees.length === 0 && <EmptyRow colSpan={6} text={bookingFeeSearch ? "No booking fee matches your search." : "No booking fee records."} />}
+                  </tbody>
+                </table>
+              </div>
+              <DashboardPagination page={bookingFeeRows.page} pages={bookingFeeRows.pages} onChange={setBookingFeePage} />
+            </div>
+          </div>
+          )}
+
+          {activeSection === "workPayments" && <div className="eco-card p-4"><div className="fw-bold mb-3">Final Work Payments</div><div className="table-responsive"><table className="table align-middle"><thead><tr><th>Booking</th><th>Customer</th><th>Partner</th><th>Amount</th><th>TrxID</th><th>Status / Action</th></tr></thead><tbody>{(dashboard.workPayments || []).map((item) => <tr key={item.id}><td>{item.booking_code}</td><td>{item.customer_name}</td><td>{item.partner_name}</td><td>৳{Number(item.amount).toFixed(2)}</td><td>{item.bkash_trx_id || "-"}</td><td><span className="badge text-bg-secondary me-2">{item.status}</span>{item.status === "PENDING" && <button className="btn eco-btn btn-sm" onClick={() => approveWorkPayment(item.id)}>Approve Payment</button>}</td></tr>)}{(dashboard.workPayments || []).length === 0 && <EmptyRow colSpan={6} text="No work payments." />}</tbody></table></div></div>}
 
           {activeSection === "customers" && (
           <div className="eco-card p-0 overflow-hidden mb-3">
@@ -864,7 +1021,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(dashboard.customers || []).map((item) => (
+                  {customerRows.items.map((item) => (
                     <React.Fragment key={item.id}>
                       <tr>
                         <td>{item.name}</td>
@@ -922,6 +1079,7 @@ export default function AdminDashboard() {
                     </React.Fragment>
                   ))}
                   {(dashboard.customers || []).length === 0 && <EmptyRow colSpan={6} text="No customers yet." />}
+                  {(dashboard.customers || []).length > 0 && <tr><td colSpan="6"><DashboardPagination page={customerRows.page} pages={customerRows.pages} onChange={(page) => setListPage("customers",page)} /></td></tr>}
                 </tbody>
               </table>
             </div>
@@ -947,7 +1105,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(dashboard.partners || []).map((item) => (
+                  {partnerRows.items.map((item) => (
                     <React.Fragment key={item.id}>
                       <tr>
                         <td>{item.first_name} {item.last_name}</td>
@@ -1060,6 +1218,7 @@ export default function AdminDashboard() {
                     </React.Fragment>
                   ))}
                   {(dashboard.partners || []).length === 0 && <EmptyRow colSpan={6} text="No partners yet." />}
+                  {(dashboard.partners || []).length > 0 && <tr><td colSpan="6"><DashboardPagination page={partnerRows.page} pages={partnerRows.pages} onChange={(page) => setListPage("partners",page)} /></td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1129,17 +1288,19 @@ export default function AdminDashboard() {
                     <th>Code</th>
                     <th>Amount</th>
                     <th>Balance</th>
+                    <th>Payment Details</th>
                     <th>Status</th>
                     <th className="text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(dashboard.withdrawals || []).map((item) => (
+                  {withdrawalRows.items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.first_name} {item.last_name}</td>
                       <td>{item.partner_code || "-"}</td>
                       <td>{item.amount}</td>
                       <td>{item.current_balance}</td>
+                      <td><div className="fw-semibold">{item.payout_method || "-"}</div><div>{item.payout_account_name || "-"}</div><div>{item.payout_account_number || "-"}</div>{item.payout_method === "BANK" && <div className="small-muted">{item.payout_bank_name} · {item.payout_branch_name}{item.payout_routing_number ? ` · ${item.payout_routing_number}` : ""}</div>}</td>
                       <td>{item.status}</td>
                       <td className="text-end">
                         <button className="btn eco-btn btn-sm" disabled={item.status !== "PENDING"} onClick={() => payWithdrawal(item.id)}>
@@ -1148,7 +1309,8 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
-                  {(dashboard.withdrawals || []).length === 0 && <EmptyRow colSpan={6} text="No withdrawal requests." />}
+                  {(dashboard.withdrawals || []).length === 0 && <EmptyRow colSpan={7} text="No withdrawal requests." />}
+                  {(dashboard.withdrawals || []).length > 0 && <tr><td colSpan="7"><DashboardPagination page={withdrawalRows.page} pages={withdrawalRows.pages} onChange={(page) => setListPage("withdrawals",page)} /></td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1158,6 +1320,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+      {selectedBooking && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSelectedBooking(null)}><div className="payout-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between mb-3"><div><h5 className="mb-1">Booking Details</h5><div className="small-muted">{selectedBooking.booking_code}</div></div><button className="btn-close" aria-label="Close" onClick={() => setSelectedBooking(null)} /></div><div className="dashboard-detail-grid">{[["Customer", selectedBooking.customer_name],["Mobile", selectedBooking.customer_mobile],["Service", serviceLabelMap[selectedBooking.category] || selectedBooking.category],["Status", bookingStatusLabel(selectedBooking.status)],["Requested Partner", selectedBooking.requested_partner_first_name ? `${selectedBooking.requested_partner_first_name} ${selectedBooking.requested_partner_last_name}` : "None"],["Assigned Partner", selectedBooking.assigned_partner_first_name ? `${selectedBooking.assigned_partner_first_name} ${selectedBooking.assigned_partner_last_name}` : "Not assigned"],["Booking Fee", `৳${Number(selectedBooking.booking_fee || 0).toFixed(0)}`],["TrxID", selectedBooking.bkash_trx_id || "Not submitted"],["District / Thana", `${selectedBooking.district || "-"} / ${selectedBooking.thana || "-"}`],["Address", selectedBooking.service_address || "-"]].map(([label,value]) => <div className="dashboard-detail-item" key={label}><span>{label}</span><b>{value}</b></div>)}</div></div></div>}
+      {showServiceModal && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setShowServiceModal(false)}><div className="payout-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">{editingServiceKey ? "Edit Service" : "Add New Service"}</h5><div className="small-muted">Used across the website.</div></div><button className="btn-close" aria-label="Close" onClick={() => setShowServiceModal(false)} /></div><div className="row g-3"><div className="col-12"><label className="form-label">Service Key</label><input className="form-control" placeholder="e.g. CARPENTRY" value={serviceDraft.key} disabled={Boolean(editingServiceKey)} onChange={(e) => setServiceDraft((p) => ({...p,key:e.target.value}))} /></div><div className="col-12"><label className="form-label">Service Title</label><input className="form-control" value={serviceDraft.title} onChange={(e) => setServiceDraft((p) => ({...p,title:e.target.value}))} /></div><div className="col-12"><label className="form-label">Description</label><textarea className="form-control" rows="4" value={serviceDraft.desc} onChange={(e) => setServiceDraft((p) => ({...p,desc:e.target.value}))} /></div><div className="col-12"><label className="form-label">Service Card Image</label><input type="file" className="form-control" accept="image/*" onChange={(e) => setServiceDraft((p) => ({...p,imageFile:e.target.files?.[0] || null,removeImage:false}))} /></div><div className="col-12 d-flex justify-content-end gap-2"><button type="button" className="btn btn-light" onClick={() => setShowServiceModal(false)}>Cancel</button><button className="btn eco-btn" onClick={submitService}>{editingServiceKey ? "Update Service" : "Add Service"}</button></div></div></div></div>}
     </div>
   );
 }

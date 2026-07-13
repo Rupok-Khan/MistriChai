@@ -33,6 +33,7 @@ Backend folder:
 e:\CSE\9th\project\ondemand\server
 
 Command:
+cd server
 npm run dev
 
 Backend URL:
@@ -50,6 +51,7 @@ Frontend folder:
 e:\CSE\9th\project\ondemand\client
 
 Command:
+cd client
 npm run dev
 
 Frontend URL:
@@ -104,6 +106,88 @@ http://localhost:5173/auth/customer/login
 
 Partner auth page:
 http://localhost:5173/auth/partner/login
+
+
+
+All five accounts are APPROVED and AVAILABLE. Partners can log in with either
+their email or mobile number.
+
+To create or restore these demo accounts at any time:
+cd e:\CSE\9th\project\ondemand\server
+npm run seed:partners
+
+-----------------------------------
+ALL CUSTOMER LOGIN CREDENTIALS
+-----------------------------------
+
+All customer accounts use this password:
+Customer@12345
+
+1. MD Rupok Khan
+   Email: rupok124519@gmail.com
+   Mobile: 0654649
+   Password: Customer@12345
+
+2. Md Shakil Hosen
+   Email: battlefield9398@gmail.com
+   Mobile: 017901998720
+   Password: Customer@12345
+
+3. Rupok Khan
+   Email: mdrupokkhan40@gmail.com
+   Mobile: 01789498498
+   Password: Customer@12345
+
+Customers can log in with either their email address or mobile number.
+
+-----------------------------------
+ALL PARTNER LOGIN CREDENTIALS
+-----------------------------------
+
+All partner accounts use this password:
+Partner@12345
+
+1. Rohim Ali
+   Email: rupok12459@gmail.com
+   Mobile: 0127575875
+   Password: Partner@12345
+
+2. Kamrul hasan
+   Email: rupok1245@gmail.com
+   Mobile: 01796954585
+   Password: Partner@12345
+
+3. Shakil Hosen
+   Email: battlefield93@gmail.com
+   Mobile: 017984984984
+   Password: Partner@12345
+
+4. Arif Hossain
+   Email: arif.partner@ondemand.com
+   Mobile: 01711001001
+   Password: Partner@12345
+
+5. Mehedi Hasan
+   Email: mehedi.partner@ondemand.com
+   Mobile: 01711001002
+   Password: Partner@12345
+
+6. Sabbir Ahmed
+   Email: sabbir.partner@ondemand.com
+   Mobile: 01711001003
+   Password: Partner@12345
+
+7. Imran Khan
+   Email: imran.partner@ondemand.com
+   Mobile: 01711001004
+   Password: Partner@12345
+
+8. Nayeem Rahman
+   Email: nayeem.partner@ondemand.com
+   Mobile: 01711001005
+   Password: Partner@12345
+
+Partners can log in with either their email address or mobile number.
 
 Main app home page:
 http://localhost:5173

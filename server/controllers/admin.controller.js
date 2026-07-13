@@ -8,6 +8,7 @@ const Wallet = require("../models/wallet.model");
 const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const SiteSettings = require("../models/siteSettings.model");
+const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 
 function toServiceImageUrl(file) {
   if (!file?.filename) return "";
@@ -35,6 +36,21 @@ function deleteUploadedServiceImage(imageUrl) {
   }
 }
 
+function toSiteImageUrl(file) {
+  if (!file?.filename) return "";
+  return `/uploads/site/${file.filename}`;
+}
+
+function deleteUploadedSiteImage(imageUrl) {
+  const raw = String(imageUrl || "").trim();
+  if (!raw.startsWith("/uploads/site/")) return;
+  const absolutePath = path.join(__dirname, "..", raw.replace(/^\/+/, ""));
+  if (!absolutePath.includes(`${path.sep}uploads${path.sep}site${path.sep}`)) return;
+  if (fs.existsSync(absolutePath)) {
+    try { fs.unlinkSync(absolutePath); } catch (err) { /* Image cleanup must not block content updates. */ }
+  }
+}
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -47,7 +63,10 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ role: "ADMIN", email }, process.env.JWT_SECRET, {
-      expiresIn: "7d"
+      algorithm: "HS256",
+      issuer: "ondemand-api",
+      audience: "ondemand-web",
+      expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || "12h"
     });
 
     return res.json({ token, user: { role: "ADMIN", email } });
@@ -58,7 +77,7 @@ exports.login = async (req, res) => {
 
 exports.dashboard = async (req, res) => {
   try {
-    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings] = await Promise.all([
+    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings, changeRequests, bookingFeeSummary, bookingFees, workPayments] = await Promise.all([
       Partner.adminListPartnersByStatus("PENDING"),
       Partner.adminListPartnersByStatus("APPROVED"),
       Booking.listBookingsForAdmin(),
@@ -66,17 +85,23 @@ exports.dashboard = async (req, res) => {
       Contact.getAllContacts(),
       User.listCustomers(),
       User.listPartners(),
-      SiteSettings.getAllSettings()
+      SiteSettings.getAllSettings(),
+      BookingChangeRequest.listForAdmin(),
+      Booking.getBookingFeeSummary(),
+      Booking.listBookingFeesForAdmin(),
+      Booking.listWorkPaymentsForAdmin()
     ]);
 
     const summary = {
       pending_partners: pendingPartners.length,
       total_bookings: bookings.length,
+      booking_fee_revenue: bookingFeeSummary.net,
       active_bookings: bookings.filter((x) =>
-        ["PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER", "ASSIGNED", "IN_PROGRESS"].includes(x.status)
+        ["PAYMENT_PENDING", "PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER", "ASSIGNED", "IN_PROGRESS"].includes(x.status)
       ).length,
       refund_cases: bookings.filter((x) => ["REFUND_PENDING", "REFUNDED"].includes(x.status)).length,
       withdrawal_requests: withdrawals.filter((x) => x.status === "PENDING").length,
+      pending_change_requests: changeRequests.filter((x) => x.status === "PENDING").length,
       unread_contacts: contacts.length,
       total_customers: customers.length,
       total_partners: allPartners.length
@@ -91,7 +116,11 @@ exports.dashboard = async (req, res) => {
         partners: allPartners,
         bookings,
         withdrawals,
-        siteSettings
+        siteSettings,
+        changeRequests,
+        bookingFeeSummary,
+        bookingFees,
+        workPayments
       }
     });
   } catch (err) {
@@ -166,15 +195,139 @@ exports.assignBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+    if (booking.payment_status !== "PAID") {
+      return res.status(400).json({ message: "Approve the customer's bKash payment before assigning a partner" });
+    }
+    if (!["PENDING_ASSIGNMENT", "WAITING_FOR_PARTNER"].includes(booking.status)) {
+      return res.status(400).json({ message: `This booking cannot be assigned while its status is ${booking.status}` });
+    }
+    const partnerUserId = Number(req.body.partner_user_id);
+    if (!Number.isInteger(partnerUserId) || partnerUserId <= 0) {
+      return res.status(400).json({ message: "Select a valid partner" });
+    }
 
     await Booking.assignBooking({
       bookingId: booking.id,
-      partnerUserId: req.body.partner_user_id,
+      partnerUserId,
       adminNote: req.body.admin_note
     });
-    await Partner.setBusyOnAssignment(req.body.partner_user_id);
+    await Partner.setBusyOnAssignment(partnerUserId);
 
     return res.json({ message: "Partner assigned to booking" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.approveBookingPayment = async (req, res) => {
+  try {
+    const booking = await Booking.getBookingById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    if (booking.status !== "PAYMENT_PENDING" || booking.payment_status !== "PENDING") {
+      return res.status(400).json({ message: "This payment is not waiting for approval" });
+    }
+
+    const approved = await Booking.approveBookingPayment(booking.id);
+    if (!approved) {
+      return res.status(409).json({ message: "Payment was already processed" });
+    }
+    return res.json({ message: "bKash payment approved. The job can now be assigned." });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.approveWorkPayment = async (req, res) => {
+  try {
+    const approved = await Booking.approveWorkPayment(req.params.id, req.admin?.email || req.user?.email || process.env.ADMIN_EMAIL);
+    if (!approved) return res.status(409).json({ message: "Work payment is not pending or was already processed" });
+    return res.json({ message: "Final payment approved and marked paid" });
+  } catch (err) { return res.status(500).json({ message: "Server error", error: err.message }); }
+};
+
+exports.reviewBookingChangeRequest = async (req, res) => {
+  try {
+    const request = await BookingChangeRequest.getById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Cancellation or rejection request not found" });
+    }
+    if (request.status !== "PENDING") {
+      return res.status(400).json({ message: "This request has already been reviewed" });
+    }
+
+    const action = String(req.body.action || "").trim().toUpperCase();
+    if (!["APPROVE", "REJECT"].includes(action)) {
+      return res.status(400).json({ message: "Action must be APPROVE or REJECT" });
+    }
+    const adminNote = String(req.body.admin_note || "").trim();
+
+    if (action === "REJECT") {
+      await BookingChangeRequest.reviewRequest({
+        id: request.id,
+        status: "REJECTED",
+        adminNote,
+        adminEmail: req.admin.email
+      });
+      return res.json({ message: "Request rejected. The booking remains unchanged." });
+    }
+
+    if (!["ASSIGNED", "IN_PROGRESS"].includes(request.booking_status)) {
+      return res.status(400).json({ message: "The booking is no longer active with an assigned partner" });
+    }
+
+    if (request.request_type === "CUSTOMER_CANCELLATION") {
+      const booking = await Booking.getBookingById(request.booking_id);
+      const assignedPartnerId = booking.assigned_partner_user_id;
+      await Booking.cancelBooking({
+        bookingId: booking.id,
+        adminNote: adminNote || "Customer cancellation approved by admin"
+      });
+      if (assignedPartnerId) {
+        await Partner.setAvailableAfterCompletion(assignedPartnerId);
+      }
+      if (booking.payment_status === "PAID" && !(await Booking.hasRefundForBooking(booking.id))) {
+        await Booking.createPayment({
+          booking_id: booking.id,
+          payer_user_id: null,
+          receiver_user_id: booking.customer_user_id,
+          transaction_type: "REFUND",
+          payment_method: "MOBILE_BANKING",
+          amount: booking.booking_fee,
+          status: "REFUNDED",
+          note: adminNote || "Booking fee refunded after approved customer cancellation"
+        });
+      }
+    } else if (["PARTNER_REJECTION", "CUSTOMER_PARTNER_CHANGE"].includes(request.request_type)) {
+      const partnerId = request.assigned_partner_user_id;
+      if (request.request_type === "CUSTOMER_PARTNER_CHANGE") {
+        await Booking.deleteProposedWorkPayment(request.booking_id);
+      }
+      await Booking.releaseBookingForReassignment({
+        bookingId: request.booking_id,
+        adminNote: adminNote || (request.request_type === "CUSTOMER_PARTNER_CHANGE" ? "Customer partner change approved; waiting for reassignment" : "Partner rejection approved; waiting for reassignment")
+      });
+      if (partnerId) {
+        await Partner.setAvailableAfterCompletion(partnerId);
+      }
+    } else {
+      return res.status(400).json({ message: "Unsupported request type" });
+    }
+
+    await BookingChangeRequest.reviewRequest({
+      id: request.id,
+      status: "APPROVED",
+      adminNote,
+      adminEmail: req.admin.email
+    });
+    return res.json({
+      message: request.request_type === "CUSTOMER_CANCELLATION"
+        ? "Cancellation approved and booking fee refunded"
+        : request.request_type === "CUSTOMER_PARTNER_CHANGE"
+          ? "Partner change approved. Reassign this paid booking without another booking fee."
+          : "Partner rejection approved. The booking is ready for reassignment."
+    });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -381,10 +534,40 @@ exports.getSiteSettings = async (req, res, next) => {
 };
 
 exports.updateSiteSettings = async (req, res, next) => {
+  const uploadedFiles = Object.values(req.files || {}).flat();
   try {
-    const data = await SiteSettings.updateAllSettings(req.body || {});
+    let payload = req.body || {};
+    if (typeof req.body?.settings === "string") {
+      try { payload = JSON.parse(req.body.settings); }
+      catch (err) { return res.status(400).json({ message: "Invalid site content data" }); }
+    }
+    const heroImage = req.files?.hero_image?.[0];
+    const promoLeftImage = req.files?.promo_left_image?.[0];
+    const promoRightImage = req.files?.promo_right_image?.[0];
+    const previous = uploadedFiles.length ? await SiteSettings.getAllSettings() : null;
+    if (heroImage) {
+      payload = {
+        ...payload,
+        home: { ...(payload.home || {}), heroImageUrl: toSiteImageUrl(heroImage) }
+      };
+    }
+    if (promoLeftImage || promoRightImage) {
+      payload = {
+        ...payload,
+        promo: {
+          ...(payload.promo || {}),
+          ...(promoLeftImage ? { leftImageUrl: toSiteImageUrl(promoLeftImage) } : {}),
+          ...(promoRightImage ? { rightImageUrl: toSiteImageUrl(promoRightImage) } : {})
+        }
+      };
+    }
+    const data = await SiteSettings.updateAllSettings(payload);
+    if (heroImage) deleteUploadedSiteImage(previous?.home?.heroImageUrl);
+    if (promoLeftImage) deleteUploadedSiteImage(previous?.promo?.leftImageUrl);
+    if (promoRightImage) deleteUploadedSiteImage(previous?.promo?.rightImageUrl);
     res.json({ message: "Site content updated", data });
   } catch (err) {
+    uploadedFiles.forEach((file) => deleteUploadedSiteImage(toSiteImageUrl(file)));
     next(err);
   }
 };

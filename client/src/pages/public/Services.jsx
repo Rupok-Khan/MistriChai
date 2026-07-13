@@ -58,8 +58,9 @@ export default function Services() {
   };
 
   return (
-    <div className="container section-pad">
-      <div className="text-center mb-4 mb-md-5">
+    <main className="services-catalog-page">
+      <div className="container section-pad">
+      <div className="text-center mb-4 mb-md-5 services-catalog-heading">
         <div className="services-page-kicker">What We Fix</div>
         <h2 className="fw-bold services-page-title">Choose Your Service</h2>
         <p className="small-muted services-page-subtitle">
@@ -70,10 +71,9 @@ export default function Services() {
       <div className="row g-4">
         {displayServices.map((s) => (
           <div key={s.key} className="col-12 col-md-6 col-lg-4">
-            <div className="service-card service-page-card h-100">
+            <article className="service-card service-page-card modern-service-card h-100">
               <div className="service-img-wrap service-page-img-wrap">
                 <img className="service-img service-page-img" src={resolveImageSrc(s)} alt={s.title} />
-                <div className="service-page-chip">{s.title}</div>
               </div>
 
               <div className="service-body service-page-body">
@@ -85,10 +85,11 @@ export default function Services() {
                   Book Now
                 </button>
               </div>
-            </div>
+            </article>
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </main>
   );
 }

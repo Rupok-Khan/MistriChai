@@ -25,6 +25,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateUser = (updates) => {
+    setUser((current) => {
+      if (!current) return current;
+      const next = { ...current, ...updates };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  };
+
   // Optional: keep state in sync if user logs out in another tab
   useEffect(() => {
     const handler = () => {
@@ -39,7 +48,7 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  const value = useMemo(() => ({ user, login, logout }), [user]);
+  const value = useMemo(() => ({ user, login, logout, updateUser }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

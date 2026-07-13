@@ -74,6 +74,10 @@ export default function TeamSection() {
                   </p>
 
                   <div className="team-social">
+                    <a href={p.facebook_url || "https://www.facebook.com/"} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on Facebook`} title="Facebook">f</a>
+                    <a href={p.instagram_url || "https://www.instagram.com/"} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on Instagram`} title="Instagram">◎</a>
+                    <a href={p.linkedin_url || "https://www.linkedin.com/"} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on LinkedIn`} title="LinkedIn">in</a>
+                    <a href={p.whatsapp_url || "https://www.whatsapp.com/"} target="_blank" rel="noopener noreferrer" aria-label={`Contact ${p.name} on WhatsApp`} title="WhatsApp">wa</a>
                     <span title="Facebook">f</span>
                     <span title="Twitter">x</span>
                     <span title="Instagram">⌁</span>

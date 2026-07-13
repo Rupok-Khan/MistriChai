@@ -5,12 +5,16 @@ import { PartnerService } from "../../services/partner.service";
 import { CustomerService } from "../../services/customer.service";
 import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import { SiteContentService } from "../../services/siteContent.service";
+import { allDistricts, thanaNamesOf, upazilaNamesOf } from "@bangladeshi/bangladesh-address/build/src/index.js";
+
+const SERVICE_CHARGE = 99;
+const BKASH_NUMBER = "01984646174";
 
 const DEFAULT_FILTERS = {
   district: "",
   thana: "",
   ward_no: "",
-  availableNow: true
+  availableNow: false
 };
 
 const DEFAULT_BOOKING_STATE = {
@@ -23,7 +27,8 @@ const DEFAULT_BOOKING_STATE = {
   city_corp_or_union: "",
   preferred_date: "",
   preferred_time: "",
-  booking_fee: "200",
+  booking_fee: String(SERVICE_CHARGE),
+  bkash_trx_id: "",
   estimated_cash_amount: "0",
   customer_note: ""
 };
@@ -131,15 +136,16 @@ export default function PartnerList() {
   }, [loadPartnerDirectory, loadPartners, user]);
 
   const districtOptions = useMemo(() => {
-    return [...new Set((directory || []).map((item) => String(item.district || "").trim()).filter(Boolean))].sort();
-  }, [directory]);
+    return allDistricts().slice().sort((a, b) => a.localeCompare(b));
+  }, []);
 
   const thanaOptions = useMemo(() => {
-    const source = (directory || []).filter((item) =>
-      !filters.district || item.district === filters.district
-    );
-    return [...new Set(source.map((item) => String(item.thana || "").trim()).filter(Boolean))].sort();
-  }, [directory, filters.district]);
+    if (!filters.district) return [];
+    return [...new Set([
+      ...upazilaNamesOf(filters.district),
+      ...thanaNamesOf(filters.district)
+    ])].sort((a, b) => a.localeCompare(b));
+  }, [filters.district]);
 
   const onFilterChange = (k, v) => {
     setFilters((prev) => {
@@ -189,7 +195,8 @@ export default function PartnerList() {
         city_corp_or_union: bookingState.city_corp_or_union,
         preferred_date: bookingState.preferred_date,
         preferred_time: bookingState.preferred_time,
-        booking_fee: Number(bookingState.booking_fee),
+        booking_fee: SERVICE_CHARGE,
+        bkash_trx_id: bookingState.bkash_trx_id.trim(),
         estimated_cash_amount: Number(bookingState.estimated_cash_amount || 0),
         customer_note: bookingState.customer_note
       });
@@ -236,8 +243,8 @@ export default function PartnerList() {
           </div>
           <div className="col-12 col-md-3">
             <label className="form-label">Thana</label>
-            <select className="form-select" value={filters.thana} onChange={(e) => onFilterChange("thana", e.target.value)}>
-              <option value="">All Thanas</option>
+            <select className="form-select" value={filters.thana} onChange={(e) => onFilterChange("thana", e.target.value)} disabled={!filters.district}>
+              <option value="">{filters.district ? "All Thanas / Upazilas" : "Select a district first"}</option>
               {thanaOptions.map((thana) => (
                 <option key={thana} value={thana}>{thana}</option>
               ))}
@@ -245,7 +252,7 @@ export default function PartnerList() {
           </div>
           <div className="col-12 col-md-3">
             <label className="form-label">Ward No</label>
-            <input className="form-control" value={filters.ward_no} onChange={(e) => onFilterChange("ward_no", e.target.value)} />
+            <input className="form-control" value={filters.ward_no} onChange={(e) => onFilterChange("ward_no", e.target.value)} placeholder="Enter ward number" inputMode="numeric" />
           </div>
           <div className="col-12 col-md-3">
             <div className="form-check mb-2">
@@ -257,9 +264,10 @@ export default function PartnerList() {
                 id="availableNow"
               />
               <label className="form-check-label" htmlFor="availableNow">
-                Available Only
+                Available partners only
               </label>
             </div>
+            <div className="small-muted mb-2">{filters.availableNow ? "Showing AVAILABLE partners" : "Showing all partners"}</div>
             <button className="btn eco-btn w-100" type="button" onClick={loadPartners} disabled={loading}>
               {loading ? "Loading..." : "Apply Filters"}
             </button>
@@ -268,7 +276,7 @@ export default function PartnerList() {
       </div>
 
       <div className="row g-3">
-        <div className={selectedPartner ? "col-12 col-xl-7" : "col-12"}>
+        <div className="col-12">
           {loading ? (
             <div className="eco-card p-4 text-center">
               <div className="spinner-border" role="status" />
@@ -280,27 +288,33 @@ export default function PartnerList() {
           ) : (
             <div className="row g-3">
               {list.map((p) => (
-                <div key={p.id} className="col-12 col-md-6">
-                  <div className="eco-card p-3 h-100">
-                    <div className="d-flex gap-3">
-                      <img src={p.profile_photo_url} alt={p.name} className="partner-avatar" />
+                <div key={p.id} className="col-12 col-md-6 col-xl-4">
+                  <div className={`eco-card p-3 h-100 browse-partner-card ${String(p.id) === bookingState.partnerId ? "is-selected" : ""}`}>
+                    <div className="d-flex gap-3 browse-partner-head">
+                      <div className="partner-photo-wrap"><img src={p.profile_photo_url} alt={p.name} className="partner-avatar" /><i className={isAvailableStatus(p.availability_status) ? "is-online" : ""} /></div>
                       <div className="flex-grow-1">
-                        <div className="fw-bold">{p.name}</div>
-                        <div className="small-muted">Code: {p.partner_code || "Pending approval code"}</div>
+                        <div className="d-flex justify-content-between gap-2"><div className="browse-partner-name">{p.name}</div><span className="partner-rating-pill">★ {Number(p.rating_avg || 0).toFixed(1)}</span></div>
+                        <div className="partner-verified">✓ Verified · {p.partner_code || "Code pending"}</div>
                         <div className="small-muted">{p.district}, {p.thana}, Ward {p.ward_no}</div>
                         <div className="small-muted">Working: {p.working_start_time} - {p.working_end_time}</div>
                         <div className="small-muted">Experience: {p.experience_years} years</div>
                         <div className="small-muted">
                           Rating: {Number(p.rating_avg || 0).toFixed(1)} / 5 ({p.rating_count || 0} reviews)
                         </div>
+                        <div className="team-social partner-card-social">
+                          {p.facebook_url && <a href={p.facebook_url} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on Facebook`}>f</a>}
+                          {p.instagram_url && <a href={p.instagram_url} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on Instagram`}>◎</a>}
+                          {p.linkedin_url && <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on LinkedIn`}>in</a>}
+                          {p.whatsapp_url && <a href={p.whatsapp_url} target="_blank" rel="noopener noreferrer" aria-label={`Contact ${p.name} on WhatsApp`}>wa</a>}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div className="d-flex justify-content-between align-items-center mt-3 browse-partner-footer">
                       <span className={`badge ${isAvailableStatus(p.availability_status) ? "text-bg-success" : "text-bg-secondary"}`}>
                         {p.availability_status}
                       </span>
-                      <button className="btn eco-btn" onClick={() => choosePartner(p)}>
+                      <button className="btn eco-btn partner-choose-btn" onClick={() => choosePartner(p)} disabled={!isAvailableStatus(p.availability_status)}>
                         {String(p.id) === bookingState.partnerId ? "Selected" : "Choose and Continue"}
                       </button>
                     </div>
@@ -312,7 +326,7 @@ export default function PartnerList() {
         </div>
 
         {selectedPartner && (
-          <div className="col-12 col-xl-5">
+          <div className="col-12">
             <div className="eco-card p-4 h-100">
               <div className="fw-bold mb-1">Booking Form</div>
               <div className="small-muted mb-3">
@@ -337,12 +351,30 @@ export default function PartnerList() {
                   <input className="form-control" value={bookingState.preferred_time} onChange={(e) => onBookingChange("preferred_time", e.target.value)} placeholder="Morning / 2 PM / Evening" />
                 </div>
                 <div className="col-12 col-md-6">
-                  <label className="form-label">Booking Fee</label>
-                  <input type="number" className="form-control" value={bookingState.booking_fee} onChange={(e) => onBookingChange("booking_fee", e.target.value)} required />
+                  <label className="form-label">Service Charge</label>
+                  <input type="text" className="form-control" value={`৳${SERVICE_CHARGE}`} readOnly />
                 </div>
                 <div className="col-12 col-md-6">
                   <label className="form-label">Expected Cash Payment</label>
                   <input type="number" className="form-control" value={bookingState.estimated_cash_amount} onChange={(e) => onBookingChange("estimated_cash_amount", e.target.value)} />
+                </div>
+                <div className="col-12">
+                  <div className="alert alert-info mb-0">
+                    Send <b>৳{SERVICE_CHARGE}</b> manually to the admin bKash number <b>{BKASH_NUMBER}</b>, then enter the transaction ID below. Admin will verify the payment before assigning the job.
+                  </div>
+                </div>
+                <div className="col-12">
+                  <label className="form-label">bKash Transaction ID</label>
+                  <input
+                    className="form-control"
+                    value={bookingState.bkash_trx_id}
+                    onChange={(e) => onBookingChange("bkash_trx_id", e.target.value)}
+                    placeholder="Example: C7A1BC2DEF"
+                    minLength="6"
+                    maxLength="50"
+                    pattern="[A-Za-z0-9]+"
+                    required
+                  />
                 </div>
                 <div className="col-12">
                   <label className="form-label">Extra Note</label>
@@ -353,7 +385,7 @@ export default function PartnerList() {
                     Change Partner
                   </button>
                   <button className="btn eco-btn w-50">
-                    Pay Fee & Place Order
+                    Submit Payment & Order
                   </button>
                 </div>
               </form>

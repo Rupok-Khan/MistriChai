@@ -64,6 +64,7 @@ async function getPartnerMe(user_id) {
             pp.father_name, pp.mother_name, pp.verification_status, pp.availability_status,
             pp.district, pp.thana, pp.ward_no, pp.city_corp_or_union,
             pp.technician_category, pp.working_start_time, pp.working_end_time, pp.experience_years,
+            pp.facebook_url, pp.instagram_url, pp.linkedin_url, pp.whatsapp_url,
             pp.profile_photo, pp.nid_front_photo, pp.nid_back_photo, pp.rejection_reason,
             COALESCE(w.balance, 0) AS wallet_balance
      FROM users u
@@ -93,6 +94,7 @@ async function listPartnersForCustomer({ category, district, thana, ward_no }) {
       pp.availability_status,
       pp.verification_status,
       pp.profile_photo,
+      pp.facebook_url, pp.instagram_url, pp.linkedin_url, pp.whatsapp_url,
       COALESCE(r.rating_avg, 0) AS rating_avg,
       COALESCE(r.rating_count, 0) AS rating_count
     FROM partner_profiles pp
@@ -160,6 +162,7 @@ async function getTopPartnersForHome(limit = 3) {
       pp.availability_status,
       pp.verification_status,
       pp.profile_photo,
+      pp.facebook_url, pp.instagram_url, pp.linkedin_url, pp.whatsapp_url,
       COALESCE(r.rating_avg, 0) AS rating_avg,
       COALESCE(r.rating_count, 0) AS rating_count
     FROM partner_profiles pp
@@ -300,6 +303,7 @@ async function updateProfile(userId, data) {
     city_corp_or_union,
     technician_category,
     experience_years
+    ,facebook_url, instagram_url, linkedin_url, whatsapp_url
   } = data;
 
   await pool.query(
@@ -314,7 +318,7 @@ async function updateProfile(userId, data) {
      SET first_name = ?, last_name = ?, nid_address = ?, father_name = ?, mother_name = ?,
          nid_number = ?,
          district = ?, thana = ?, ward_no = ?, city_corp_or_union = ?,
-         technician_category = ?, experience_years = ?
+         technician_category = ?, experience_years = ?, facebook_url = ?, instagram_url = ?, linkedin_url = ?, whatsapp_url = ?
      WHERE user_id = ?`,
     [
       first_name,
@@ -329,6 +333,10 @@ async function updateProfile(userId, data) {
       city_corp_or_union,
       technician_category,
       Number(experience_years || 0),
+      facebook_url || null,
+      instagram_url || null,
+      linkedin_url || null,
+      whatsapp_url || null,
       userId
     ]
   );
@@ -341,6 +349,10 @@ async function updateWorkingHours(userId, start, end) {
      WHERE user_id = ?`,
     [start, end, userId]
   );
+}
+
+async function updateProfilePhoto(userId, profilePhoto) {
+  await pool.query("UPDATE partner_profiles SET profile_photo=? WHERE user_id=?", [profilePhoto, userId]);
 }
 
 async function updateAvailability(userId, status) {
@@ -428,6 +440,7 @@ module.exports = {
   adminGetPartnerSubmission,
   adminUpdateVerificationStatus,
   updateProfile,
+  updateProfilePhoto,
   updateWorkingHours,
   updateAvailability,
   setBusyOnAssignment,

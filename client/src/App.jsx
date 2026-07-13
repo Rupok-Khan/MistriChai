@@ -1,40 +1,41 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
-import RedirectDashboard from "./pages/RedirectDashboard";
-import PartnerList from "./pages/customer/PartnerList.jsx";
-import AdminLogin from "./pages/admin/AdminLogin.jsx";
-import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
-import AdminPartnerReview from "./pages/admin/AdminPartnerReview.jsx";
 import AdminProtectedRoute from "./components/AdminProtectedRoute.jsx";
+import MotionEnhancer from "./components/MotionEnhancer.jsx";
+import Loading from "./components/Loading.jsx";
 
-import Home from "./pages/public/home";
-import About from "./pages/public/about";
-import Contact from "./pages/public/Contact";
-import Services from "./pages/public/Services";
-import AuthLanding from "./pages/public/AuthLanding";
-import Team from "./pages/public/Team";
-import Support from "./pages/public/Support";
-import Privacy from "./pages/public/Privacy";
-import Terms from "./pages/public/Terms";
-
-import CustomerLogin from "./pages/customer/CustomerLogin";
-import CustomerSignup from "./pages/customer/CustomerSignup";
-import CustomerDashboard from "./pages/customer/CustomerDashboard";
-
-import PartnerLogin from "./pages/partner/PartnerLogin";
-import PartnerSignup from "./pages/partner/PartnerSignup";
-import PartnerDashboard from "./pages/partner/PartnerDashboard";
-
-import NotFound from "./pages/notFound";
+const Home = lazy(() => import("./pages/public/home"));
+const About = lazy(() => import("./pages/public/about"));
+const Contact = lazy(() => import("./pages/public/Contact"));
+const Services = lazy(() => import("./pages/public/Services"));
+const AuthLanding = lazy(() => import("./pages/public/AuthLanding"));
+const Team = lazy(() => import("./pages/public/Team"));
+const Support = lazy(() => import("./pages/public/Support"));
+const Privacy = lazy(() => import("./pages/public/Privacy"));
+const Terms = lazy(() => import("./pages/public/Terms"));
+const RedirectDashboard = lazy(() => import("./pages/RedirectDashboard"));
+const PartnerList = lazy(() => import("./pages/customer/PartnerList.jsx"));
+const CustomerLogin = lazy(() => import("./pages/customer/CustomerLogin"));
+const CustomerSignup = lazy(() => import("./pages/customer/CustomerSignup"));
+const CustomerDashboard = lazy(() => import("./pages/customer/CustomerDashboard"));
+const PartnerLogin = lazy(() => import("./pages/partner/PartnerLogin"));
+const PartnerSignup = lazy(() => import("./pages/partner/PartnerSignup"));
+const PartnerDashboard = lazy(() => import("./pages/partner/PartnerDashboard"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin.jsx"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.jsx"));
+const AdminPartnerReview = lazy(() => import("./pages/admin/AdminPartnerReview.jsx"));
+const NotFound = lazy(() => import("./pages/notFound"));
 
 export default function App() {
   return (
     <>
       <Navbar />
+      <MotionEnhancer />
+      <Suspense fallback={<div className="container section-pad"><Loading /></div>}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
@@ -99,6 +100,7 @@ export default function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       <Footer />
     </>
   );

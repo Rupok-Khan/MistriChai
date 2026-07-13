@@ -52,6 +52,7 @@ exports.customerSignup = async (req, res) => {
 exports.customerLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
+    if (!identifier || !password) return res.status(400).json({ message: "Identifier and password are required" });
     const user = isEmail(identifier)
       ? await User.findByEmail(identifier)
       : await User.findByMobile(identifier);
@@ -109,6 +110,16 @@ exports.partnerSignup = async (req, res) => {
     const profile = req.files?.profile_photo?.[0];
     const nidFront = req.files?.nid_front_photo?.[0];
     const nidBack = req.files?.nid_back_photo?.[0];
+
+    if (![first_name, last_name, mobile, nid_number, district, thana, technician_category].every((value) => String(value || "").trim())) {
+      return res.status(400).json({ message: "Required partner information is missing" });
+    }
+    if (!password || String(password).length < 8 || String(password).length > 128) {
+      return res.status(400).json({ message: "Password must be between 8 and 128 characters" });
+    }
+    if (email && !isEmail(email)) {
+      return res.status(400).json({ message: "Invalid email address" });
+    }
 
     if (!profile || !nidFront || !nidBack) {
       return res.status(400).json({

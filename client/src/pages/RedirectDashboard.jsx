@@ -1,13 +1,16 @@
 import React, { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { getAdminToken, getAdminUser } from "../utils/adminAuth";
 
 export default function RedirectDashboard() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) navigate("/auth", { replace: true });
+    const admin = getAdminToken() ? getAdminUser() : null;
+    if (admin?.role === "ADMIN") navigate("/admin/dashboard", { replace: true });
+    else if (!user) navigate("/auth", { replace: true });
     else if (user.role === "CUSTOMER") navigate("/customer/dashboard", { replace: true });
     else if (user.role === "PARTNER") navigate("/partner/dashboard", { replace: true });
     else navigate("/", { replace: true });

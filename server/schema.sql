@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS partner_profiles (
   working_start_time TIME NOT NULL,
   working_end_time TIME NOT NULL,
   experience_years INT NOT NULL DEFAULT 0,
+  facebook_url VARCHAR(255) NULL,
+  instagram_url VARCHAR(255) NULL,
+  linkedin_url VARCHAR(255) NULL,
+  whatsapp_url VARCHAR(255) NULL,
   verification_status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
   availability_status ENUM('AVAILABLE','BUSY','OFFLINE') NOT NULL DEFAULT 'OFFLINE',
   rejection_reason TEXT NULL,
@@ -78,6 +82,7 @@ CREATE TABLE IF NOT EXISTS service_bookings (
   booking_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   estimated_cash_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   status ENUM(
+    'PAYMENT_PENDING',
     'PENDING_ASSIGNMENT',
     'WAITING_FOR_PARTNER',
     'ASSIGNED',
@@ -86,7 +91,7 @@ CREATE TABLE IF NOT EXISTS service_bookings (
     'REFUND_PENDING',
     'REFUNDED',
     'CANCELLED'
-  ) NOT NULL DEFAULT 'PENDING_ASSIGNMENT',
+  ) NOT NULL DEFAULT 'PAYMENT_PENDING',
   admin_note TEXT NULL,
   customer_note TEXT NULL,
   partner_note TEXT NULL,
@@ -123,6 +128,27 @@ CREATE TABLE IF NOT EXISTS booking_messages (
     FOREIGN KEY (receiver_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS booking_change_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_id INT NOT NULL,
+  requester_user_id INT NOT NULL,
+  request_type ENUM('CUSTOMER_CANCELLATION','CUSTOMER_PARTNER_CHANGE','PARTNER_REJECTION') NOT NULL,
+  reason TEXT NOT NULL,
+  proof_url VARCHAR(255) NULL,
+  proof_name VARCHAR(255) NULL,
+  proof_type VARCHAR(120) NULL,
+  status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+  admin_note TEXT NULL,
+  reviewed_by_email VARCHAR(150) NULL,
+  reviewed_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_change_request_booking
+    FOREIGN KEY (booking_id) REFERENCES service_bookings(id) ON DELETE CASCADE,
+  CONSTRAINT fk_change_request_user
+    FOREIGN KEY (requester_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS payment_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   booking_id INT NULL,
@@ -130,16 +156,31 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
   receiver_user_id INT NULL,
   transaction_type ENUM('BOOKING_FEE','SERVICE_CASH','REFUND','WITHDRAWAL') NOT NULL,
   payment_method ENUM('ONLINE','CASH','BANK','MOBILE_BANKING') NOT NULL DEFAULT 'ONLINE',
+  transaction_reference VARCHAR(100) NULL,
   amount DECIMAL(10,2) NOT NULL,
   status ENUM('PENDING','PAID','REFUNDED','COMPLETED') NOT NULL DEFAULT 'PAID',
   note TEXT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_payment_transaction_reference (transaction_reference),
   CONSTRAINT fk_payment_booking
     FOREIGN KEY (booking_id) REFERENCES service_bookings(id) ON DELETE SET NULL,
   CONSTRAINT fk_payment_payer
     FOREIGN KEY (payer_user_id) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT fk_payment_receiver
     FOREIGN KEY (receiver_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Final job payments are separate from the initial booking fee.
+CREATE TABLE IF NOT EXISTS work_payments (
+  id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT NOT NULL UNIQUE,
+  customer_user_id INT NOT NULL, partner_user_id INT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL, bkash_trx_id VARCHAR(100) NULL UNIQUE,
+  status ENUM('PROPOSED','CUSTOMER_APPROVED','ADMIN_APPROVED','AWAITING_CUSTOMER','PENDING','PAID') NOT NULL DEFAULT 'PROPOSED',
+  submitted_at DATETIME NULL, approved_at DATETIME NULL, approved_by_email VARCHAR(150) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (booking_id) REFERENCES service_bookings(id) ON DELETE CASCADE,
+  FOREIGN KEY (customer_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (partner_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS partner_wallets (
@@ -151,6 +192,20 @@ CREATE TABLE IF NOT EXISTS partner_wallets (
     FOREIGN KEY (partner_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS partner_payout_methods (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  partner_user_id INT NOT NULL UNIQUE,
+  method ENUM('BKASH','NAGAD','ROCKET','BANK') NOT NULL,
+  account_name VARCHAR(120) NOT NULL,
+  account_number VARCHAR(80) NOT NULL,
+  bank_name VARCHAR(120) NULL,
+  branch_name VARCHAR(120) NULL,
+  routing_number VARCHAR(50) NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payout_partner
+    FOREIGN KEY (partner_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS wallet_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   partner_user_id INT NOT NULL,
@@ -159,6 +214,12 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   transaction_type ENUM('CREDIT','DEBIT','WITHDRAW_REQUEST','WITHDRAW_PAID') NOT NULL,
   status ENUM('PENDING','COMPLETED','REJECTED') NOT NULL DEFAULT 'COMPLETED',
   note TEXT NULL,
+  payout_method ENUM('BKASH','NAGAD','ROCKET','BANK') NULL,
+  payout_account_name VARCHAR(120) NULL,
+  payout_account_number VARCHAR(80) NULL,
+  payout_bank_name VARCHAR(120) NULL,
+  payout_branch_name VARCHAR(120) NULL,
+  payout_routing_number VARCHAR(50) NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_wallet_tx_partner
     FOREIGN KEY (partner_user_id) REFERENCES users(id) ON DELETE CASCADE,

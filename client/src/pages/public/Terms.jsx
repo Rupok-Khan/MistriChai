@@ -10,7 +10,7 @@ export default function Terms() {
           <div className="col-12 col-md-4">
             <div className="eco-card p-3 h-100">
               <div className="fw-bold">Booking Fee</div>
-              <div className="small-muted mt-1">Customers pay a platform booking fee first. Final service payment is made in cash to the partner after work completion.</div>
+              <div className="small-muted mt-1">Customers send the fixed ৳99 service charge to the displayed admin bKash number and submit the transaction ID. Admin verifies it before assigning the job. Final service payment is made in cash to the partner after work completion.</div>
             </div>
           </div>
           <div className="col-12 col-md-4">

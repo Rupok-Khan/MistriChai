@@ -20,6 +20,12 @@ export const AdminService = {
       body: { reason }
     }),
   bookings: () => apiFetch("/api/admin/bookings"),
+  approveBookingPayment: (bookingId) =>
+    apiFetch(`/api/admin/bookings/${bookingId}/approve-payment`, {
+      method: "PATCH",
+      body: {}
+    }),
+  approveWorkPayment: (id) => apiFetch(`/api/admin/work-payments/${id}/approve`, { method: "PATCH", body: {} }),
   assignBooking: (bookingId, payload) =>
     apiFetch(`/api/admin/bookings/${bookingId}/assign`, {
       method: "PATCH",
@@ -27,6 +33,11 @@ export const AdminService = {
     }),
   refundBooking: (bookingId, payload) =>
     apiFetch(`/api/admin/bookings/${bookingId}/refund`, {
+      method: "PATCH",
+      body: payload
+    }),
+  reviewBookingChangeRequest: (requestId, payload) =>
+    apiFetch(`/api/admin/booking-change-requests/${requestId}/review`, {
       method: "PATCH",
       body: payload
     }),

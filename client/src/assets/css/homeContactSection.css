@@ -1,6 +1,6 @@
 .contactSec {
-  background: #ffffff;
-  padding: 70px 0;
+  background: linear-gradient(180deg,#fff,#f4fbf7);
+  padding: clamp(60px,8vw,90px) 0;
 }
 
 .contactSec__inner {
@@ -29,7 +29,10 @@
   border-radius: 12px;
   padding: 16px 18px;
   margin-bottom: 14px;
+  box-shadow:0 8px 25px rgba(2,24,17,.05);
+  transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
 }
+.contactSec__card:hover{ transform:translateY(-4px); border-color:rgba(31,138,101,.28); box-shadow:0 15px 34px rgba(2,24,17,.1); }
 
 .contactSec__icon {
   width: 44px;
@@ -167,5 +170,6 @@
   }
   .contactSec__form {
     margin: 0;
+    max-width: none;
   }
 }
