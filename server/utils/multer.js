@@ -1,7 +1,7 @@
 const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const { uploadDirectory } = require("../config/uploadPaths");
 
 const IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -23,12 +23,12 @@ function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 }
 
-const profileDir = path.join(__dirname, "..", "uploads", "profile");
-const nidDir = path.join(__dirname, "..", "uploads", "nid");
-const chatDir = path.join(__dirname, "..", "uploads", "chat");
-const serviceDir = path.join(__dirname, "..", "uploads", "service");
-const siteDir = path.join(__dirname, "..", "uploads", "site");
-const cancellationDir = path.join(__dirname, "..", "uploads", "cancellation");
+const profileDir = uploadDirectory("profile");
+const nidDir = uploadDirectory("nid");
+const chatDir = uploadDirectory("chat");
+const serviceDir = uploadDirectory("service");
+const siteDir = uploadDirectory("site");
+const cancellationDir = uploadDirectory("cancellation");
 ensureDir(profileDir);
 ensureDir(nidDir);
 ensureDir(chatDir);

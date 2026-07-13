@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 const multer = require("multer");
 const { securityHeaders, createRateLimiter } = require("./middleware/security.middleware");
+const { uploadRoot } = require("./config/uploadPaths");
 
 const authRoutes = require("./routes/auth.routes");
 const customerRoutes = require("./routes/customer.routes");
@@ -50,7 +51,7 @@ app.use("/api/admin", adminRoutes);
 
 
 // Serve uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+app.use("/uploads", express.static(uploadRoot, {
   dotfiles: "deny",
   fallthrough: false,
   immutable: true,

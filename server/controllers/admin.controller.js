@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
-const path = require("path");
 const Partner = require("../models/partner.model");
 const Contact = require("../models/contact.model");
 const Booking = require("../models/booking.model");
@@ -9,6 +8,7 @@ const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const SiteSettings = require("../models/siteSettings.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
+const { uploadedFilePath } = require("../config/uploadPaths");
 
 function toServiceImageUrl(file) {
   if (!file?.filename) return "";
@@ -21,11 +21,8 @@ function deleteUploadedServiceImage(imageUrl) {
     return;
   }
 
-  const safeRelative = raw.replace(/^\/+/, "");
-  const absolutePath = path.join(__dirname, "..", safeRelative);
-  if (!absolutePath.includes(`${path.sep}uploads${path.sep}service${path.sep}`)) {
-    return;
-  }
+  const absolutePath = uploadedFilePath(raw, "service");
+  if (!absolutePath) return;
 
   if (fs.existsSync(absolutePath)) {
     try {
@@ -44,8 +41,8 @@ function toSiteImageUrl(file) {
 function deleteUploadedSiteImage(imageUrl) {
   const raw = String(imageUrl || "").trim();
   if (!raw.startsWith("/uploads/site/")) return;
-  const absolutePath = path.join(__dirname, "..", raw.replace(/^\/+/, ""));
-  if (!absolutePath.includes(`${path.sep}uploads${path.sep}site${path.sep}`)) return;
+  const absolutePath = uploadedFilePath(raw, "site");
+  if (!absolutePath) return;
   if (fs.existsSync(absolutePath)) {
     try { fs.unlinkSync(absolutePath); } catch (err) { /* Image cleanup must not block content updates. */ }
   }
