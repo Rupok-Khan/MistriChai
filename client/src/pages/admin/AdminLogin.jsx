@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AdminService } from "../../services/admin.service";
 import { getAdminToken, getAdminUser, setAdminAuth } from "../../utils/adminAuth";
+import LoginLayout from "../../components/LoginLayout";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -40,10 +41,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="container section-pad">
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-6 col-lg-5">
-          <div className="eco-card p-4 p-md-5">
+    <LoginLayout role="Administration" title="Keep the MistriChai platform running smoothly." description="Review partners, manage bookings and payments, maintain service categories, and oversee platform activity from one control center." points={["Partner and booking oversight", "Secure payment verification", "Service and website management"]}>
             <h3 className="fw-bold mb-1">Admin Login</h3>
             <p className="small-muted mb-3">Access partner verification panel.</p>
 
@@ -80,9 +78,6 @@ export default function AdminLogin() {
             <div className="small-muted mt-3">
               Tip: credentials are set in <code>.env</code> (ADMIN_EMAIL / ADMIN_PASSWORD)
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </LoginLayout>
   );
 }

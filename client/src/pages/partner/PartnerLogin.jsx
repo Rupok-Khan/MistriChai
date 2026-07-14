@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { AuthService } from "../../services/auth.service";
+import LoginLayout from "../../components/LoginLayout";
 
 export default function PartnerLogin() {
   const { login } = useContext(AuthContext);
@@ -23,10 +24,7 @@ export default function PartnerLogin() {
   };
 
   return (
-    <div className="container section-pad">
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-6 col-lg-5">
-          <div className="eco-card p-4">
+    <LoginLayout role="Partner" title="Grow your service business with MistriChai." description="Connect with nearby customers, manage assigned work, receive approved payments, and keep your professional profile up to date." points={["Reach customers in your service area", "Manage jobs and availability", "Track earnings and withdrawals"]}>
             <h3 className="fw-bold mb-1">Partner Login</h3>
             <p className="small-muted">Use your mobile, email, or approved partner code to login.</p>
 
@@ -47,9 +45,6 @@ export default function PartnerLogin() {
             <div className="mt-3 small-muted">
               New partner? <Link to="/auth/partner/signup">Create account</Link>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </LoginLayout>
   );
 }
