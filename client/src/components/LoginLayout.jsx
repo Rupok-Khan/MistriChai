@@ -1,7 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import heroImage from "../assets/image/hero image.jpg";
+import { SiteContentService } from "../services/siteContent.service";
 
-export default function LoginLayout({ role, title, description, points = [], children }) {
+export default function LoginLayout({ contentKey, role, title, description, points = [], children }) {
+  const [content, setContent] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    SiteContentService.getPublic()
+      .then((response) => {
+        if (mounted) setContent(response?.data?.loginPages?.[contentKey] || null);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [contentKey]);
+
+  const displayTitle = content?.title || title;
+  const displayDescription = content?.description || description;
+  const displayPoints = [content?.pointOne, content?.pointTwo, content?.pointThree].filter(Boolean);
+
   return (
     <main className="login-page section-pad">
       <div className="container">
@@ -9,10 +26,10 @@ export default function LoginLayout({ role, title, description, points = [], chi
           <div className="login-visual" style={{ backgroundImage: `url("${heroImage}")` }}>
             <div className="login-visual-content">
               <span className="login-role-badge">MistriChai · {role}</span>
-              <h1>{title}</h1>
-              <p>{description}</p>
+              <h1>{displayTitle}</h1>
+              <p>{displayDescription}</p>
               <div className="login-benefits">
-                {points.map((point) => <span key={point}><b aria-hidden="true">✓</b>{point}</span>)}
+                {(displayPoints.length ? displayPoints : points).map((point) => <span key={point}><b aria-hidden="true">✓</b>{point}</span>)}
               </div>
             </div>
           </div>

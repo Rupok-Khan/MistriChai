@@ -31,6 +31,46 @@ function bookingStatusLabel(status) {
   return String(status || "Unknown").replaceAll("_", " ");
 }
 
+const LOGIN_EDITOR_FIELDS = [
+  ["title", "Panel heading", false],
+  ["description", "Platform description", true],
+  ["pointOne", "Benefit one", false],
+  ["pointTwo", "Benefit two", false],
+  ["pointThree", "Benefit three", false]
+];
+
+function LoginContentEditor({ pageKey, label, siteForm, setSiteForm }) {
+  const values = siteForm.loginPages?.[pageKey] || {};
+  const update = (field, value) => setSiteForm((previous) => ({
+    ...previous,
+    loginPages: {
+      ...(previous.loginPages || {}),
+      [pageKey]: { ...(previous.loginPages?.[pageKey] || {}), [field]: value }
+    }
+  }));
+
+  return (
+    <div className={`col-12 site-login-${pageKey}`}>
+      <div className="border rounded-4 p-3">
+        <div className="fw-bold mb-1">{label} Login Page</div>
+        <div className="small-muted mb-3">Edit the text displayed over the image on the left side of this login page.</div>
+        <div className="row g-3">
+          {LOGIN_EDITOR_FIELDS.map(([field, labelText, multiline]) => (
+            <div className={multiline ? "col-12" : "col-12 col-md-6"} key={field}>
+              <label className="form-label" htmlFor={`${pageKey}-${field}`}>{labelText}</label>
+              {multiline ? (
+                <textarea id={`${pageKey}-${field}`} className="form-control" rows="4" value={values[field] || ""} onChange={(event) => update(field, event.target.value)} />
+              ) : (
+                <input id={`${pageKey}-${field}`} className="form-control" value={values[field] || ""} onChange={(event) => update(field, event.target.value)} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [dashboard, setDashboard] = useState({
@@ -559,7 +599,7 @@ export default function AdminDashboard() {
               </div>
               <div className="language-control"><span><b>Website Language</b><small>Switch the entire website language</small></span><div className="btn-group"><button className={`btn btn-sm ${siteForm.preferences?.language !== "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("ENGLISH")}>English</button><button className={`btn btn-sm ${siteForm.preferences?.language === "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("BANGLA")}>বাংলা</button></div></div>
             </div>
-            <div className="site-content-grid">{[["home","Home Hero","Hero text, images, buttons and highlights"],["why","Why Choose Us","Homepage trust points"],["reviews","Reviews","Seven animated customer reviews"],["promo","Promo Section","Homepage promotional content"],["about","About Page","Mission, vision and about copy"],["contact","Contact Details","Support and contact information"]].map(([key,title,description]) => <button type="button" className="site-content-card" key={key} onClick={() => setSiteEditor(key)}><span className="site-content-icon">{title.charAt(0)}</span><span><b>{title}</b><small>{description}</small></span><span className="site-content-arrow">→</span></button>)}</div>
+            <div className="site-content-grid">{[["home","Home Hero","Hero text, images, buttons and highlights"],["why","Why Choose Us","Homepage trust points"],["reviews","Reviews","Seven animated customer reviews"],["promo","Promo Section","Homepage promotional content"],["about","About Page","Mission, vision and about copy"],["contact","Contact Details","Support and contact information"],["login-customer","Customer Login","Customer login image-panel content"],["login-partner","Partner Login","Partner login image-panel content"],["login-admin","Admin Login","Admin login image-panel content"]].map(([key,title,description]) => <button type="button" className="site-content-card" key={key} onClick={() => setSiteEditor(key)}><span className="site-content-icon">{title.charAt(0)}</span><span><b>{title}</b><small>{description}</small></span><span className="site-content-arrow">→</span></button>)}</div>
 
             {siteEditor && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSiteEditor(null)}><div className="payout-modal site-content-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">Edit Site Content</h5><div className="small-muted">Update this section and save your changes.</div></div><button className="btn-close" aria-label="Close" onClick={() => setSiteEditor(null)} /></div><div className="row g-4 site-editor-content" data-section={siteEditor}>
               <div className="col-12 site-home">
@@ -760,6 +800,10 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              <LoginContentEditor pageKey="customer" label="Customer" siteForm={siteForm} setSiteForm={setSiteForm} />
+              <LoginContentEditor pageKey="partner" label="Partner" siteForm={siteForm} setSiteForm={setSiteForm} />
+              <LoginContentEditor pageKey="admin" label="Admin" siteForm={siteForm} setSiteForm={setSiteForm} />
             </div>
             <div className="d-flex justify-content-end gap-2 mt-3"><button className="btn btn-light" onClick={() => setSiteEditor(null)}>Cancel</button><button className="btn eco-btn" onClick={async () => { await saveSiteContent(); setSiteEditor(null); }} disabled={siteSaving}>{siteSaving ? "Saving..." : "Save Changes"}</button></div>
             </div></div>}

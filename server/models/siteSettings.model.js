@@ -11,6 +11,29 @@ const DEFAULT_SERVICE_OPTIONS = [
 const DEFAULT_SITE_SETTINGS = {
   preferences: { language: "ENGLISH" },
   services: DEFAULT_SERVICE_OPTIONS,
+  loginPages: {
+    customer: {
+      title: "Trusted home services, one login away.",
+      description: "Book verified local professionals, discuss your work, and follow every payment and service update from one secure dashboard.",
+      pointOne: "Verified service partners",
+      pointTwo: "Transparent booking and payments",
+      pointThree: "Track every job from your dashboard"
+    },
+    partner: {
+      title: "Grow your service business with MistriChai.",
+      description: "Connect with nearby customers, manage assigned work, receive approved payments, and keep your professional profile up to date.",
+      pointOne: "Reach customers in your service area",
+      pointTwo: "Manage jobs and availability",
+      pointThree: "Track earnings and withdrawals"
+    },
+    admin: {
+      title: "Keep the MistriChai platform running smoothly.",
+      description: "Review partners, manage bookings and payments, maintain service categories, and oversee platform activity from one control center.",
+      pointOne: "Partner and booking oversight",
+      pointTwo: "Secure payment verification",
+      pointThree: "Service and website management"
+    }
+  },
   home: {
     heroKicker: "Quality service at a fair price",
     heroTitle: "Specialized, efficient, and trusted home services",

@@ -38,7 +38,7 @@ export default function CustomerLogin() {
   };
 
   return (
-    <LoginLayout role="Customer" title="Trusted home services, one login away." description="Book verified local professionals, discuss your work, and follow every payment and service update from one secure dashboard." points={["Verified service partners", "Transparent booking and payments", "Track every job from your dashboard"]}>
+    <LoginLayout contentKey="customer" role="Customer" title="Trusted home services, one login away." description="Book verified local professionals, discuss your work, and follow every payment and service update from one secure dashboard." points={["Verified service partners", "Transparent booking and payments", "Track every job from your dashboard"]}>
             <h3 className="fw-bold mb-1">Customer Login</h3>
             <p className="small-muted mb-3">Use email or mobile number.</p>
 

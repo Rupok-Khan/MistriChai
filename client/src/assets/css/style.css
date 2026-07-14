@@ -1529,7 +1529,7 @@ textarea.form-control{ min-height:110px; }
 .site-content-modal { width:min(100%,820px); }
 .site-hero-image-preview { display:block; width:100%; max-height:220px; object-fit:cover; border:1px solid rgba(20,106,78,.16); border-radius:16px; box-shadow:var(--shadow-soft); }
 .site-editor-content > [class*="site-"] { display:none; }
-.site-editor-content[data-section="home"] > .site-home,.site-editor-content[data-section="why"] > .site-why,.site-editor-content[data-section="reviews"] > .site-reviews,.site-editor-content[data-section="promo"] > .site-promo,.site-editor-content[data-section="about"] > .site-about,.site-editor-content[data-section="contact"] > .site-contact { display:block; }
+.site-editor-content[data-section="home"] > .site-home,.site-editor-content[data-section="why"] > .site-why,.site-editor-content[data-section="reviews"] > .site-reviews,.site-editor-content[data-section="promo"] > .site-promo,.site-editor-content[data-section="about"] > .site-about,.site-editor-content[data-section="contact"] > .site-contact,.site-editor-content[data-section="login-customer"] > .site-login-customer,.site-editor-content[data-section="login-partner"] > .site-login-partner,.site-editor-content[data-section="login-admin"] > .site-login-admin { display:block; }
 .compact-request-table { width:100%; table-layout:fixed; }
 .compact-request-table th,.compact-request-table td { padding:12px 10px; overflow-wrap:anywhere; }
 

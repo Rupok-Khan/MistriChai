@@ -41,7 +41,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <LoginLayout role="Administration" title="Keep the MistriChai platform running smoothly." description="Review partners, manage bookings and payments, maintain service categories, and oversee platform activity from one control center." points={["Partner and booking oversight", "Secure payment verification", "Service and website management"]}>
+    <LoginLayout contentKey="admin" role="Administration" title="Keep the MistriChai platform running smoothly." description="Review partners, manage bookings and payments, maintain service categories, and oversee platform activity from one control center." points={["Partner and booking oversight", "Secure payment verification", "Service and website management"]}>
             <h3 className="fw-bold mb-1">Admin Login</h3>
             <p className="small-muted mb-3">Access partner verification panel.</p>
 

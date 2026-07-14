@@ -24,7 +24,7 @@ export default function PartnerLogin() {
   };
 
   return (
-    <LoginLayout role="Partner" title="Grow your service business with MistriChai." description="Connect with nearby customers, manage assigned work, receive approved payments, and keep your professional profile up to date." points={["Reach customers in your service area", "Manage jobs and availability", "Track earnings and withdrawals"]}>
+    <LoginLayout contentKey="partner" role="Partner" title="Grow your service business with MistriChai." description="Connect with nearby customers, manage assigned work, receive approved payments, and keep your professional profile up to date." points={["Reach customers in your service area", "Manage jobs and availability", "Track earnings and withdrawals"]}>
             <h3 className="fw-bold mb-1">Partner Login</h3>
             <p className="small-muted">Use your mobile, email, or approved partner code to login.</p>
 
