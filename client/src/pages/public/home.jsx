@@ -14,7 +14,8 @@ export default function Home() {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [content, setContent] = useState(null);
   const services = normalizeServiceOptions(content?.services || DEFAULT_SERVICE_OPTIONS);
-  const featured = services.slice(0, 3);
+  const featured = services.slice(0, 4);
+  const secondaryFeatured = featured.slice(1);
   const popular = services.slice(0, 4);
 
   useEffect(() => {
@@ -167,13 +168,13 @@ export default function Home() {
               </div>
 
               <div className="row g-3 mt-2">
-                {featured.map((item, index) => (
+                {secondaryFeatured.map((item, index) => (
                   <div key={item.key} className="col-12 col-md-6 col-lg-4">
                     <div className="service-card mini-card h-100">
                       <div className="service-img-wrap">
                         <img
                           className="service-img"
-                          src={resolveServiceImage(item, index)}
+                          src={resolveServiceImage(item, index + 1)}
                           alt={item.title}
                         />
                       </div>
