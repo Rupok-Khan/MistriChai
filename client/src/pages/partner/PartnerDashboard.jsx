@@ -7,6 +7,7 @@ import DashboardChatWindow from "../../components/DashboardChatWindow";
 import { SiteContentService } from "../../services/siteContent.service";
 import { AuthContext } from "../../context/AuthContext";
 import DashboardPagination from "../../components/DashboardPagination";
+import DashboardInsights from "../../components/DashboardInsights";
 import { paginate } from "../../utils/pagination";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 
@@ -411,6 +412,7 @@ export default function PartnerDashboard() {
             </div>
 
             {activeSection === "overview" && (
+              <>
               <div className="row g-3 dashboard-overview">
                 {!serviceCategoryActive && (
                   <div className="col-12">
@@ -418,7 +420,7 @@ export default function PartnerDashboard() {
                   </div>
                 )}
                 <div className="col-12 col-lg-6">
-                  <div className="eco-card p-4 h-100">
+                  <div className="eco-card p-4 h-100 dashboard-primary-card">
                     <div className="d-flex gap-3 align-items-center">
                       <img className="img-fluid rounded-3 border" src={resolveMediaUrl(me.profile_photo)} alt="profile" style={{ width: 90, height: 90, objectFit: "cover" }} />
                       <div>
@@ -461,6 +463,15 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               </div>
+              <DashboardInsights title="Job performance" subtitle="Current and completed workload" segments={[
+                { label: "Active jobs", value: currentOrders.length, color: "#20a875" },
+                { label: "Completed", value: history.filter((item) => item.status === "COMPLETED").length, color: "#6c63ff" },
+                { label: "Other history", value: history.filter((item) => item.status !== "COMPLETED").length, color: "#ffb547" }
+              ]} bars={[
+                { label: "Active", value: currentOrders.length, color: "#20a875" }, { label: "History", value: history.length, color: "#2f8cff" },
+                { label: "Wallet", value: wallet.transactions?.length || 0, color: "#6c63ff" }, { label: "Requests", value: rejectionRequests.length, color: "#f0648b" }
+              ]} highlight={me.availability_status || "Status"} />
+              </>
             )}
 
             {activeSection === "availability" && (
@@ -804,6 +815,7 @@ export default function PartnerDashboard() {
         attachment={attachment}
         onChangeAttachment={setAttachment}
         apiBase={BASE}
+        currentUserId={me?.id}
         onClose={() => {
           setActiveBookingId(null);
           setMessages([]);

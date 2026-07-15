@@ -8,6 +8,7 @@ import DashboardChatWindow from "../../components/DashboardChatWindow";
 import { SiteContentService } from "../../services/siteContent.service";
 import { PartnerService } from "../../services/partner.service";
 import DashboardPagination from "../../components/DashboardPagination";
+import DashboardInsights from "../../components/DashboardInsights";
 import { paginate } from "../../utils/pagination";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 
@@ -373,9 +374,10 @@ export default function CustomerDashboard() {
             </div>
 
             {activeSection === "overview" && (
+              <>
               <div className="row g-3 dashboard-overview">
                 <div className="col-12 col-md-6 col-xl-3">
-                  <div className="eco-card p-4 h-100">
+                  <div className="eco-card p-4 h-100 dashboard-primary-card">
                     <div className="small-muted">Active Orders</div>
                     <div className="fw-bold fs-3">{currentBookings.length}</div>
                   </div>
@@ -424,6 +426,15 @@ export default function CustomerDashboard() {
                   </div>
                 </div>
               </div>
+              <DashboardInsights title="Order progress" subtitle="Your service journey by status" segments={[
+                { label: "Active", value: currentBookings.length, color: "#20a875" },
+                { label: "Completed", value: previousBookings.filter((item) => item.status === "COMPLETED").length, color: "#6c63ff" },
+                { label: "Other history", value: previousBookings.filter((item) => item.status !== "COMPLETED").length, color: "#ffb547" }
+              ]} bars={[
+                { label: "Orders", value: bookings.length, color: "#20a875" }, { label: "Active", value: currentBookings.length, color: "#2f8cff" },
+                { label: "Paid", value: payments.length, color: "#6c63ff" }, { label: "Ratings", value: pendingRatingBookings.length, color: "#f0648b" }
+              ]} highlight={`${currentBookings.length} active`} />
+              </>
             )}
 
             {activeSection === "notifications" && (
@@ -828,6 +839,7 @@ export default function CustomerDashboard() {
         attachment={attachment}
         onChangeAttachment={setAttachment}
         apiBase={apiBase}
+        currentUserId={me?.id}
         onClose={() => {
           setActiveBookingId(null);
           setMessages([]);

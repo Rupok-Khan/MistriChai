@@ -4,6 +4,7 @@ import { AdminService } from "../../services/admin.service";
 import { clearAdminAuth } from "../../utils/adminAuth";
 import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import DashboardPagination from "../../components/DashboardPagination";
+import DashboardInsights from "../../components/DashboardInsights";
 import { paginate } from "../../utils/pagination";
 
 function EmptyRow({ colSpan, text }) {
@@ -554,9 +555,9 @@ export default function AdminDashboard() {
               ["Refund Cases", dashboard.summary?.refund_cases || 0],
               ["Customers", dashboard.summary?.total_customers || 0],
               ["Partners", dashboard.summary?.total_partners || 0]
-            ].map(([label, value]) => (
+            ].map(([label, value], index) => (
               <div key={label} className="col-12 col-md-6 col-xl-2">
-                <div className="eco-card p-4 h-100">
+                <div className={`eco-card p-4 h-100 ${index === 0 ? "dashboard-primary-card" : ""}`}>
                   <div className="small-muted">{label}</div>
                   <div className="fw-bold fs-3">{value}</div>
                 </div>
@@ -587,6 +588,16 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   </div>
+                  <DashboardInsights title="Platform distribution" subtitle="Users and booking workload" segments={[
+                    { label: "Customers", value: dashboard.summary?.total_customers || 0, color: "#20a875" },
+                    { label: "Partners", value: dashboard.summary?.total_partners || 0, color: "#6c63ff" },
+                    { label: "Active bookings", value: dashboard.summary?.active_bookings || 0, color: "#ffb547" }
+                  ]} bars={[
+                    { label: "Bookings", value: dashboard.summary?.total_bookings || 0, color: "#20a875" },
+                    { label: "Active", value: dashboard.summary?.active_bookings || 0, color: "#2f8cff" },
+                    { label: "Partners", value: dashboard.summary?.total_partners || 0, color: "#6c63ff" },
+                    { label: "Pending", value: dashboard.summary?.pending_change_requests || 0, color: "#f0648b" }
+                  ]} highlight={`${dashboard.summary?.active_bookings || 0} live`} />
                 </>
               )}
 
