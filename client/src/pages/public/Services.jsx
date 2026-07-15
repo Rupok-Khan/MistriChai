@@ -6,6 +6,7 @@ import cardTwoImg from "../../assets/image/card-2-home.jpg";
 import cardThreeImg from "../../assets/image/card-3-home.jpg";
 import heroImg from "../../assets/image/hero image.jpg";
 import { SiteContentService } from "../../services/siteContent.service";
+import Loading from "../../components/Loading";
 
 const IMAGES = {
   AC_REPAIR: cardOneImg,
@@ -17,8 +18,11 @@ const IMAGES = {
 
 export default function Services() {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const useLocalImages = import.meta.env.DEV;
   const navigate = useNavigate();
-  const [services, setServices] = useState(DEFAULT_SERVICE_OPTIONS);
+  const [services, setServices] = useState(useLocalImages ? DEFAULT_SERVICE_OPTIONS : []);
+  const [contentState, setContentState] = useState(useLocalImages ? "ready" : "loading");
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -28,17 +32,19 @@ export default function Services() {
           return;
         }
         setServices(normalizeServiceOptions(res?.data?.services));
+        setContentState("ready");
       })
       .catch(() => {
         if (active) {
-          setServices(DEFAULT_SERVICE_OPTIONS);
+          setServices(useLocalImages ? DEFAULT_SERVICE_OPTIONS : []);
+          setContentState(useLocalImages ? "ready" : "error");
         }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadAttempt, useLocalImages]);
 
   const displayServices = useMemo(() => normalizeServiceOptions(services), [services]);
 
@@ -47,6 +53,7 @@ export default function Services() {
   };
 
   const resolveImageSrc = (item) => {
+    if (useLocalImages) return IMAGES[item?.key] || heroImg;
     const uploaded = String(item?.imageUrl || "").trim();
     if (uploaded) {
       if (uploaded.startsWith("http://") || uploaded.startsWith("https://")) {
@@ -54,8 +61,11 @@ export default function Services() {
       }
       return `${API_BASE}${uploaded.startsWith("/") ? "" : "/"}${uploaded}`;
     }
-    return IMAGES[item?.key] || heroImg;
+    return "";
   };
+
+  if (!useLocalImages && contentState === "loading") return <main className="content-loading-page"><Loading /><p>Loading services from the server...</p></main>;
+  if (!useLocalImages && contentState === "error") return <main className="content-loading-page"><div className="content-load-error"><strong>Services are temporarily unavailable.</strong><p>The server may be waking up. Please try again.</p><button className="btn eco-btn" onClick={() => { setContentState("loading"); setLoadAttempt((value) => value + 1); }}>Try Again</button></div></main>;
 
   return (
     <main className="services-catalog-page">
@@ -73,7 +83,7 @@ export default function Services() {
           <div key={s.key} className="col-12 col-md-6 col-lg-4">
             <article className="service-card service-page-card modern-service-card h-100">
               <div className="service-img-wrap service-page-img-wrap">
-                <img className="service-img service-page-img" src={resolveImageSrc(s)} alt={s.title} />
+                {resolveImageSrc(s) ? <img className="service-img service-page-img" src={resolveImageSrc(s)} alt={s.title} /> : <div className="content-image-placeholder service-img service-page-img" />}
               </div>
 
               <div className="service-body service-page-body">

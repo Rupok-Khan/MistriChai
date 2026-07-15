@@ -9,10 +9,14 @@ import HomeHero from "../../components/HomeHero";
 import HomeContactSection from "../../components/HomeContactSection";
 import { DEFAULT_SERVICE_OPTIONS, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import { SiteContentService } from "../../services/siteContent.service";
+import Loading from "../../components/Loading";
 
 export default function Home() {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const useLocalImages = import.meta.env.DEV;
   const [content, setContent] = useState(null);
+  const [contentState, setContentState] = useState(import.meta.env.DEV ? "ready" : "loading");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const services = normalizeServiceOptions(content?.services || DEFAULT_SERVICE_OPTIONS);
   const featured = services.slice(0, 4);
   const secondaryFeatured = featured.slice(1);
@@ -20,19 +24,24 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
-
     SiteContentService.getPublic()
       .then((res) => {
-        if (active) setContent(res.data || null);
+        if (active) {
+          setContent(res.data || null);
+          setContentState("ready");
+        }
       })
       .catch(() => {
-        if (active) setContent(null);
+        if (active) {
+          setContent(null);
+          setContentState(useLocalImages ? "ready" : "error");
+        }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadAttempt, useLocalImages]);
 
   const home = content?.home;
   const promo = content?.promo;
@@ -41,13 +50,19 @@ export default function Home() {
   const reviews = Array.isArray(content?.reviews) ? content.reviews.slice(0, 7) : [];
 
   const resolveContentImage = (imageUrl, fallback) => {
+    if (useLocalImages) return fallback;
     const value = String(imageUrl || "").trim();
-    if (!value) return fallback;
+    if (!value) return "";
     if (/^(https?:|data:|blob:)/.test(value)) return value;
     return `${API_BASE}${value.startsWith("/") ? "" : "/"}${value}`;
   };
 
   const resolveServiceImage = (item, index = 0) => {
+    if (useLocalImages) {
+      if (index === 0) return cardOneImg;
+      if (index === 1) return cardTwoImg;
+      return cardThreeImg;
+    }
     const uploaded = String(item?.imageUrl || "").trim();
     if (uploaded) {
       if (uploaded.startsWith("http://") || uploaded.startsWith("https://")) {
@@ -55,10 +70,18 @@ export default function Home() {
       }
       return `${API_BASE}${uploaded.startsWith("/") ? "" : "/"}${uploaded}`;
     }
-    if (index === 0) return cardOneImg;
-    if (index === 1) return cardTwoImg;
-    return cardThreeImg;
+    return "";
   };
+
+  if (!useLocalImages && contentState === "loading") {
+    return <main className="content-loading-page"><Loading /><p>Loading the latest site content...</p></main>;
+  }
+
+  if (!useLocalImages && contentState === "error") {
+    return <main className="content-loading-page"><div className="content-load-error"><strong>Site content is temporarily unavailable.</strong><p>The server may be waking up. Please try again.</p><button className="btn eco-btn" onClick={() => { setContentState("loading"); setLoadAttempt((value) => value + 1); }}>Try Again</button></div></main>;
+  }
+
+  const heroImageSrc = resolveContentImage(home?.heroImageUrl, heroImg);
 
   return (
     <div className="home-wrap">
@@ -95,7 +118,7 @@ export default function Home() {
             <div className="col-12 col-lg-6">
               <div className="hero-media">
                 <div className="hero-graphic-ring" aria-hidden="true" />
-                <img className="hero-img" src={resolveContentImage(home?.heroImageUrl, heroImg)} alt={home?.heroImageAlt || "Service professionals"} />
+                {heroImageSrc ? <img className="hero-img" src={heroImageSrc} alt={home?.heroImageAlt || "Service professionals"} /> : <div className="content-image-placeholder hero-img-placeholder" aria-label="Hero image unavailable" />}
                 <div className="hero-card hero-card-1">
                   <div className="hero-card-title">Trusted service</div>
                   <div className="hero-card-text">NID verified partners</div>
@@ -145,7 +168,7 @@ export default function Home() {
 
                 <div className="service-card feature-card mt-4">
                   <div className="service-img-wrap">
-                    <img className="service-img" src={resolveServiceImage(featured[0], 2)} alt={featured[0]?.title || "Home Cleaning"} />
+                    {resolveServiceImage(featured[0], 2) ? <img className="service-img" src={resolveServiceImage(featured[0], 2)} alt={featured[0]?.title || "Home Cleaning"} /> : <div className="content-image-placeholder service-img" />}
                   </div>
 
                   <div className="service-body">
@@ -172,11 +195,11 @@ export default function Home() {
                   <div key={item.key} className="col-12 col-md-6 col-lg-4">
                     <div className="service-card mini-card h-100">
                       <div className="service-img-wrap">
-                        <img
+                        {resolveServiceImage(item, index + 1) ? <img
                           className="service-img"
                           src={resolveServiceImage(item, index + 1)}
                           alt={item.title}
-                        />
+                        /> : <div className="content-image-placeholder service-img" />}
                       </div>
                       <div className="service-body">
                         <div className="service-name">{item.title}</div>
@@ -198,7 +221,7 @@ export default function Home() {
       </section>
 
       <TeamSection />
-      <HomeHero content={{ ...promo, leftImageUrl: resolveContentImage(promo?.leftImageUrl, ""), rightImageUrl: resolveContentImage(promo?.rightImageUrl, "") }} />
+      <HomeHero content={{ ...promo, leftImageUrl: resolveContentImage(promo?.leftImageUrl, ""), rightImageUrl: resolveContentImage(promo?.rightImageUrl, "") }} allowLocalFallback={useLocalImages} />
 
       <section className="container section-pad home-popular-section">
         <div className="text-center mb-4">

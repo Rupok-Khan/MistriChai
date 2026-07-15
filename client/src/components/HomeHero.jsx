@@ -4,9 +4,9 @@ import "../assets/css/homeHero.css";
 import heroImage1 from "../assets/image/card-1-home.jpg";
 import heroImage2 from "../assets/image/card-2-home.jpg";
 
-export default function HomeHero({ content }) {
-  const leftImage = content?.leftImageUrl?.trim() || heroImage1;
-  const rightImage = content?.rightImageUrl?.trim() || heroImage2;
+export default function HomeHero({ content, allowLocalFallback = true }) {
+  const leftImage = content?.leftImageUrl?.trim() || (allowLocalFallback ? heroImage1 : "");
+  const rightImage = content?.rightImageUrl?.trim() || (allowLocalFallback ? heroImage2 : "");
 
   return (
     <section className="hero">
@@ -23,10 +23,10 @@ export default function HomeHero({ content }) {
         <div className="hero__right">
           <div className="hero__imageStack">
             <div className="hero__img hero__img--small">
-              <img src={leftImage} alt="Service preview" />
+              {leftImage ? <img src={leftImage} alt="Service preview" /> : <div className="content-image-placeholder" />}
             </div>
             <div className="hero__img hero__img--main">
-              <img src={rightImage} alt="Service preview" />
+              {rightImage ? <img src={rightImage} alt="Service preview" /> : <div className="content-image-placeholder" />}
             </div>
           </div>
         </div>
