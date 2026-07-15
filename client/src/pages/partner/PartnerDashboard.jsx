@@ -356,7 +356,7 @@ export default function PartnerDashboard() {
   ];
 
   return (
-    <div className="container section-pad">
+    <div className="container section-pad dashboard-page dashboard-page-partner">
       <Alert type="danger">{err}</Alert>
 
       {!me || !profileForm ? (
@@ -383,7 +383,7 @@ export default function PartnerDashboard() {
           </aside>
 
           <div className="admin-main">
-            <div className="eco-card p-4 mb-3">
+            <div className="eco-card p-4 mb-3 dashboard-header">
               <div className="admin-panel-kicker">
                 {activeSection === "overview" && "Overview"}
                 {activeSection === "availability" && "Availability"}
@@ -411,7 +411,7 @@ export default function PartnerDashboard() {
             </div>
 
             {activeSection === "overview" && (
-              <div className="row g-3">
+              <div className="row g-3 dashboard-overview">
                 {!serviceCategoryActive && (
                   <div className="col-12">
                     <div className="alert alert-warning mb-0">Your service category has been removed or temporarily deactivated. Your account and history are preserved; you will automatically become eligible for new jobs when admin reactivates this category.</div>

@@ -314,7 +314,7 @@ export default function CustomerDashboard() {
   ];
 
   return (
-    <div className="container section-pad">
+    <div className="container section-pad dashboard-page dashboard-page-customer">
       <Alert type="danger">{err}</Alert>
 
       {!me ? (
@@ -345,7 +345,7 @@ export default function CustomerDashboard() {
           </aside>
 
           <div className="admin-main">
-            <div className="eco-card p-4 mb-3">
+            <div className="eco-card p-4 mb-3 dashboard-header">
               <div className="admin-panel-kicker">
                 {activeSection === "overview" && "Overview"}
                 {activeSection === "notifications" && "Notifications"}
@@ -373,7 +373,7 @@ export default function CustomerDashboard() {
             </div>
 
             {activeSection === "overview" && (
-              <div className="row g-3">
+              <div className="row g-3 dashboard-overview">
                 <div className="col-12 col-md-6 col-xl-3">
                   <div className="eco-card p-4 h-100">
                     <div className="small-muted">Active Orders</div>

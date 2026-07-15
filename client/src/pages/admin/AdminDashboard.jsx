@@ -478,7 +478,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="container section-pad">
+    <div className="container section-pad dashboard-page dashboard-page-admin">
       <div className="admin-shell">
         <aside className="eco-card admin-sidebar">
           <div className="admin-sidebar-head">
@@ -507,7 +507,7 @@ export default function AdminDashboard() {
         <div className="admin-main">
           {err && <div className="alert alert-warning">{err}</div>}
 
-          <div className="eco-card p-4 mb-3">
+          <div className="eco-card p-4 mb-3 dashboard-header">
             <div className="admin-panel-kicker">
               {activeSection === "overview" && "Overview"}
               {activeSection === "site" && "Site Content"}
@@ -544,7 +544,7 @@ export default function AdminDashboard() {
             <>
               {activeSection === "overview" && (
                 <>
-                  <div className="row g-3 mb-3">
+                  <div className="row g-3 mb-3 dashboard-overview">
             {[
               ["Pending Partners", dashboard.summary?.pending_partners || 0],
               ["Total Bookings", dashboard.summary?.total_bookings || 0],
@@ -1021,7 +1021,7 @@ export default function AdminDashboard() {
 
           {activeSection === "bookingFees" && (
           <div>
-            <div className="row g-3 mb-3">
+                  <div className="row g-3 mb-3">
               {[
                 ["Collected", dashboard.bookingFeeSummary?.collected],
                 ["Pending Approval", dashboard.bookingFeeSummary?.pending],
