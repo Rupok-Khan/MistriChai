@@ -1730,6 +1730,22 @@ textarea.form-control{ min-height:110px; }
   color:#f1faf5!important;
 }
 [data-theme="dark"] .home-hero .hero-img { mix-blend-mode:normal; opacity:.92; }
+
+/* Homepage hero: keep the section close to the navbar and give the artwork
+   more visual weight on desktop without changing the mobile flow. */
+.home-hero { padding-top: 22px; }
+.home-hero .hero-media { min-height: 500px; }
+.home-hero .hero-img { height: 500px; }
+@media (max-width: 991.98px) {
+  .home-hero { padding-top: 18px; }
+  .home-hero .hero-media { min-height: 430px; }
+  .home-hero .hero-img { height: 430px; }
+}
+@media (max-width: 576px) {
+  .home-hero { padding-top: 12px; }
+  .home-hero .hero-media { min-height: 340px; }
+  .home-hero .hero-img { height: 340px; }
+}
 /* Shared customer, partner and admin login experience */
 .login-page {
   min-height: calc(100vh - 76px);
