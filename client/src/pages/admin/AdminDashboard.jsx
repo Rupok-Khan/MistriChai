@@ -151,6 +151,13 @@ export default function AdminDashboard() {
     load();
   }, []);
 
+  // Poll in the background so assignments, payments, and messages appear
+  // without requiring a full browser reload.
+  useEffect(() => {
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const handleExpired = () => navigate("/admin/login", { replace: true, state: { from: "/admin/dashboard" } });
     window.addEventListener("admin-session-expired", handleExpired);

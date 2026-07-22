@@ -137,6 +137,12 @@ export default function PartnerDashboard() {
     loadAll();
   }, []);
 
+  // Keep the partner workspace fresh when an admin/customer changes an order.
+  useEffect(() => {
+    const timer = setInterval(loadAll, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (!activeBookingId) {
       return undefined;
@@ -380,6 +386,9 @@ export default function PartnerDashboard() {
                   onClick={() => setActiveSection(item.key)}
                 />
               ))}
+            </div>
+            <div className="admin-sidebar-actions">
+              <button type="button" className="btn eco-btn-outline w-100" onClick={loadAll}>Refresh Data</button>
             </div>
           </aside>
 
