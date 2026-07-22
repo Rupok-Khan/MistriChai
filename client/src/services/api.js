@@ -1,4 +1,5 @@
 // client/src/services/api.js
+import { clearAdminAuth } from "../utils/adminAuth";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 let refreshPromise = null;
@@ -74,6 +75,14 @@ export async function apiFetch(path, options = {}, retried = false) {
       localStorage.removeItem("user");
       window.dispatchEvent(new Event("auth-session-expired"));
     }
+  }
+
+  // Admin JWTs do not use the customer refresh-cookie flow. If the Render
+  // deployment rotated JWT_SECRET (or the token expired), discard the stale
+  // token so the next request can start a clean admin login.
+  if (res.status === 401 && path.startsWith("/api/admin")) {
+    clearAdminAuth();
+    window.dispatchEvent(new Event("admin-session-expired"));
   }
 
   // ✅ Always read text first

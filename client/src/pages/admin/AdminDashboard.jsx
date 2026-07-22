@@ -151,6 +151,12 @@ export default function AdminDashboard() {
     load();
   }, []);
 
+  useEffect(() => {
+    const handleExpired = () => navigate("/admin/login", { replace: true, state: { from: "/admin/dashboard" } });
+    window.addEventListener("admin-session-expired", handleExpired);
+    return () => window.removeEventListener("admin-session-expired", handleExpired);
+  }, [navigate]);
+
   const partnerOptions = useMemo(
     () => (dashboard.approvedPartners || []).map((p) => ({ value: p.user_id, label: `${p.first_name} ${p.last_name}` })),
     [dashboard.approvedPartners]

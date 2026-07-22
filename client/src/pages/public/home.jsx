@@ -118,7 +118,7 @@ export default function Home() {
             <div className="col-12 col-lg-6">
               <div className="hero-media">
                 <div className="hero-graphic-ring" aria-hidden="true" />
-                {heroImageSrc ? <img className="hero-img" src={heroImageSrc} alt={home?.heroImageAlt || "Service professionals"} /> : <div className="content-image-placeholder hero-img-placeholder" aria-label="Hero image unavailable" />}
+                {heroImageSrc ? <img className="hero-img" src={heroImageSrc} alt={home?.heroImageAlt || "Service professionals"} onError={(event) => { if (event.currentTarget.src !== heroImg) event.currentTarget.src = heroImg; }} /> : <div className="content-image-placeholder hero-img-placeholder" aria-label="Hero image unavailable" />}
                 <div className="hero-card hero-card-1">
                   <div className="hero-card-title">Trusted service</div>
                   <div className="hero-card-text">NID verified partners</div>
