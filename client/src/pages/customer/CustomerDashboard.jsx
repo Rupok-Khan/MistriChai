@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CustomerService } from "../../services/customer.service";
 import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import Loading from "../../components/Loading";
@@ -28,6 +28,7 @@ function renderStars(value) {
 }
 
 export default function CustomerDashboard() {
+  const [searchParams] = useSearchParams();
   const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [me, setMe] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -106,6 +107,10 @@ export default function CustomerDashboard() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("section") === "subscription") setActiveSection("subscription");
+  }, [searchParams]);
 
   useEffect(() => {
     if (!activeBookingId) {
