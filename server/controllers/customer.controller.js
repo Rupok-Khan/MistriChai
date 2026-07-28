@@ -6,8 +6,9 @@ const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const Partner = require("../models/partner.model");
 const SiteSettings = require("../models/siteSettings.model");
 const { mediaUrl } = require("../utils/mediaFile");
+const Subscription = require("../models/subscription.model");
 
-const SERVICE_CHARGE = 99;
+const SERVICE_CHARGE = 49;
 const BKASH_NUMBER = "01984646174";
 
 function canAccessBooking(booking, userId) {
@@ -17,6 +18,7 @@ function canAccessBooking(booking, userId) {
 exports.me = async (req, res) => {
   try {
     const data = await Customer.getCustomerMe(req.user.id);
+    data.subscription = await Subscription.getActiveForCustomer(req.user.id);
     return res.json({ data });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
@@ -78,11 +80,13 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: "This service category is currently unavailable" });
     }
 
+    const subscription = await Subscription.getActiveForCustomer(req.user.id);
+    const bookingFee = subscription ? 0 : SERVICE_CHARGE;
     const transactionReference = String(bkash_trx_id || "").trim().toUpperCase();
-    if (!/^[A-Za-z0-9]{6,50}$/.test(transactionReference)) {
+    if (!subscription && !/^[A-Za-z0-9]{6,50}$/.test(transactionReference)) {
       return res.status(400).json({ message: "Enter a valid bKash transaction ID (6-50 letters or numbers)" });
     }
-    if (await Booking.bookingFeeReferenceExists(transactionReference)) {
+    if (!subscription && await Booking.bookingFeeReferenceExists(transactionReference)) {
       return res.status(409).json({ message: "This bKash transaction ID has already been submitted" });
     }
 
@@ -98,13 +102,13 @@ exports.createBooking = async (req, res) => {
       city_corp_or_union,
       preferred_date,
       preferred_time,
-      booking_fee: SERVICE_CHARGE,
+      booking_fee: bookingFee,
       estimated_cash_amount,
       customer_note,
-      initial_status: "PAYMENT_PENDING"
+      initial_status: subscription ? "PENDING_ASSIGNMENT" : "PAYMENT_PENDING"
     });
 
-    await Booking.createPayment({
+    if (!subscription) await Booking.createPayment({
       booking_id: bookingId,
       payer_user_id: req.user.id,
       receiver_user_id: null,
@@ -117,11 +121,27 @@ exports.createBooking = async (req, res) => {
     });
 
     const data = await Booking.getBookingById(bookingId);
-    return res.status(201).json({ message: "Payment submitted. Your job is waiting for admin approval.", data });
+    return res.status(201).json({ message: subscription ? "Order submitted with no booking fee under your active subscription." : "Payment submitted. Your job is waiting for admin approval.", data });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ message: "This bKash transaction ID has already been submitted" });
     }
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.subscribe = async (req, res) => {
+  try {
+    const planCode = String(req.body.plan_code || "").toUpperCase();
+    const plan = Subscription.PLANS[planCode];
+    const reference = String(req.body.bkash_trx_id || "").trim().toUpperCase();
+    if (!plan) return res.status(400).json({ message: "Choose a valid subscription plan" });
+    if (!/^[A-Za-z0-9]{6,50}$/.test(reference)) return res.status(400).json({ message: "Enter a valid bKash transaction ID (6-50 letters or numbers)" });
+    if (await Subscription.referenceExists(reference)) return res.status(409).json({ message: "This transaction ID has already been used" });
+    const data = await Subscription.create({ customerUserId: req.user.id, planCode, transactionReference: reference });
+    return res.status(201).json({ message: `Subscription activated for ${plan.months} months.`, data });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") return res.status(409).json({ message: "This transaction ID has already been used" });
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };

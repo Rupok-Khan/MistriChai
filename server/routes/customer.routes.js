@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/me", auth, requireRole("CUSTOMER"), Customer.me);
 router.put("/profile", auth, requireRole("CUSTOMER"), Customer.updateProfile);
 router.patch("/password", auth, requireRole("CUSTOMER"), Customer.changePassword);
+router.post("/subscription", auth, requireRole("CUSTOMER"), Customer.subscribe);
 
 router.post("/bookings", auth, requireRole("CUSTOMER"), Customer.createBooking);
 router.get("/bookings", auth, requireRole("CUSTOMER"), Customer.myBookings);

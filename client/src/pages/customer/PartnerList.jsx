@@ -7,7 +7,7 @@ import { DEFAULT_SERVICE_OPTIONS, buildServiceLabelMap, normalizeServiceOptions 
 import { SiteContentService } from "../../services/siteContent.service";
 import { allDistricts, thanaNamesOf, upazilaNamesOf } from "@bangladeshi/bangladesh-address/build/src/index.js";
 
-const SERVICE_CHARGE = 99;
+const SERVICE_CHARGE = 49;
 const BKASH_NUMBER = "01984646174";
 
 const DEFAULT_FILTERS = {
@@ -56,6 +56,7 @@ export default function PartnerList() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [bookingState, setBookingState] = useState(DEFAULT_BOOKING_STATE);
+  const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -139,6 +140,8 @@ export default function PartnerList() {
     return allDistricts().slice().sort((a, b) => a.localeCompare(b));
   }, []);
 
+  useEffect(() => { CustomerService.me().then((res) => setSubscription(res.data?.subscription || null)).catch(() => {}); }, []);
+
   const thanaOptions = useMemo(() => {
     if (!filters.district) return [];
     return [...new Set([
@@ -195,8 +198,8 @@ export default function PartnerList() {
         city_corp_or_union: bookingState.city_corp_or_union,
         preferred_date: bookingState.preferred_date,
         preferred_time: bookingState.preferred_time,
-        booking_fee: SERVICE_CHARGE,
-        bkash_trx_id: bookingState.bkash_trx_id.trim(),
+        booking_fee: subscription ? 0 : SERVICE_CHARGE,
+        bkash_trx_id: subscription ? "" : bookingState.bkash_trx_id.trim(),
         estimated_cash_amount: Number(bookingState.estimated_cash_amount || 0),
         customer_note: bookingState.customer_note
       });
@@ -352,7 +355,7 @@ export default function PartnerList() {
                 </div>
                 <div className="col-12 col-md-6">
                   <label className="form-label">Service Charge</label>
-                  <input type="text" className="form-control" value={`৳${SERVICE_CHARGE}`} readOnly />
+                  <input type="text" className="form-control" value={subscription ? "৳0 (Subscription)" : `৳${SERVICE_CHARGE}`} readOnly />
                 </div>
                 <div className="col-12 col-md-6">
                   <label className="form-label">Expected Cash Payment</label>
@@ -360,7 +363,7 @@ export default function PartnerList() {
                 </div>
                 <div className="col-12">
                   <div className="alert alert-info mb-0">
-                    Send <b>৳{SERVICE_CHARGE}</b> manually to the admin bKash number <b>{BKASH_NUMBER}</b>, then enter the transaction ID below. Admin will verify the payment before assigning the job.
+                    {subscription ? <>Your subscription is active until <b>{new Date(subscription.expires_at).toLocaleDateString()}</b>. This order has no booking fee.</> : <>Send <b>৳{SERVICE_CHARGE}</b> manually to the admin bKash number <b>{BKASH_NUMBER}</b>, then enter the transaction ID below. Admin will verify the payment before assigning the job.</>}
                   </div>
                 </div>
                 <div className="col-12">
@@ -373,7 +376,8 @@ export default function PartnerList() {
                     minLength="6"
                     maxLength="50"
                     pattern="[A-Za-z0-9]+"
-                    required
+                    required={!subscription}
+                    disabled={Boolean(subscription)}
                   />
                 </div>
                 <div className="col-12">

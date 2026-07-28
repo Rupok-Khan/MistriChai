@@ -24,6 +24,7 @@ export const CustomerService = {
       method: "POST",
       body: payload
     }),
+  subscribe: (payload) => apiFetch("/api/customer/subscription", { method: "POST", body: payload }),
   requestPartnerChange: (id, payload) => apiFetch(`/api/customer/bookings/${id}/partner-change-request`, { method: "POST", body: payload }),
   selectReplacementPartner: (id, partnerUserId) => apiFetch(`/api/customer/bookings/${id}/replacement-partner`, { method: "PATCH", body: { partner_user_id: partnerUserId } }),
   bookingMessages: (id) => apiFetch(`/api/customer/bookings/${id}/messages`),

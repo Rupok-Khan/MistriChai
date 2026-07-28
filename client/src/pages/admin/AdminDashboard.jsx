@@ -78,6 +78,7 @@ export default function AdminDashboard() {
     summary: {},
     pendingPartners: [],
     approvedPartners: [],
+    subscriptions: [],
     customers: [],
     partners: [],
     bookings: [],
@@ -204,6 +205,7 @@ export default function AdminDashboard() {
     { key: "bookings", label: "Bookings", count: dashboard.bookings?.length || 0 },
     { key: "changeRequests", label: "Cancel / Reject Requests", count: dashboard.changeRequests?.filter((item) => item.status === "PENDING").length || 0 },
     { key: "bookingFees", label: "Booking Fees", count: dashboard.bookingFees?.length || 0 },
+    { key: "subscriptions", label: "Subscriptions", count: dashboard.subscriptions?.length || 0 },
     { key: "workPayments", label: "Work Payments", count: dashboard.workPayments?.filter((x) => x.status === "PENDING").length || 0 },
     { key: "customers", label: "Customers", count: dashboard.customers?.length || 0 },
     { key: "partners", label: "Partners", count: dashboard.partners?.length || 0 },
@@ -530,6 +532,7 @@ export default function AdminDashboard() {
               {activeSection === "bookings" && "Bookings and Assignment"}
               {activeSection === "changeRequests" && "Cancellation and Rejection Requests"}
               {activeSection === "bookingFees" && "Booking Fees"}
+              {activeSection === "subscriptions" && "Customer Subscriptions"}
               {activeSection === "customers" && "Customer Management"}
               {activeSection === "partners" && "Partner Management"}
               {activeSection === "messages" && "Support Messages"}
@@ -543,6 +546,7 @@ export default function AdminDashboard() {
               {activeSection === "bookings" && "Verify bKash service charges, then assign technicians or handle refunds."}
               {activeSection === "changeRequests" && "Review customer cancellations and partner job rejections, including submitted proof."}
               {activeSection === "bookingFees" && "Track pending, collected, refunded, and net platform booking fees."}
+              {activeSection === "subscriptions" && "See subscribed customers, plan validity, transaction details, and subscription earnings."}
               {activeSection === "customers" && "Edit customer accounts and profile details."}
               {activeSection === "partners" && "Update partner profiles, status, and availability."}
               {activeSection === "messages" && "Read support messages and reply directly to customers or partners."}
@@ -1086,6 +1090,8 @@ export default function AdminDashboard() {
           )}
 
           {activeSection === "workPayments" && <div className="eco-card p-4"><div className="fw-bold mb-3">Final Work Payments</div><div className="table-responsive"><table className="table align-middle"><thead><tr><th>Booking</th><th>Customer</th><th>Partner</th><th>Amount</th><th>TrxID</th><th>Status / Action</th></tr></thead><tbody>{(dashboard.workPayments || []).map((item) => <tr key={item.id}><td>{item.booking_code}</td><td>{item.customer_name}</td><td>{item.partner_name}</td><td>৳{Number(item.amount).toFixed(2)}</td><td>{item.bkash_trx_id || "-"}</td><td><span className="badge text-bg-secondary me-2">{item.status}</span>{item.status === "PENDING" && <button className="btn eco-btn btn-sm" onClick={() => approveWorkPayment(item.id)}>Approve Payment</button>}</td></tr>)}{(dashboard.workPayments || []).length === 0 && <EmptyRow colSpan={6} text="No work payments." />}</tbody></table></div></div>}
+
+          {activeSection === "subscriptions" && <div className="eco-card p-0 overflow-hidden mb-3"><div className="p-4"><div className="fw-bold">Subscription Earnings</div><div className="small-muted">Total subscription revenue: <b>৳{Number(dashboard.subscriptionRevenue?.total || 0).toFixed(2)}</b> · Active subscribers: <b>{dashboard.summary?.active_subscriptions || 0}</b></div></div><div className="table-responsive"><table className="table mb-0 align-middle"><thead className="table-light"><tr><th>Customer</th><th>Contact</th><th>Plan</th><th>Amount</th><th>Valid Until</th><th>Transaction</th><th>Status</th></tr></thead><tbody>{(dashboard.subscriptions || []).map((item) => <tr key={item.id}><td>{item.customer_name}</td><td>{item.customer_mobile}<br /><span className="small-muted">{item.customer_email || "-"}</span></td><td>{item.plan_code === "ONE_YEAR" ? "1 Year" : "6 Months"}</td><td>৳{Number(item.amount).toFixed(2)}</td><td>{new Date(item.expires_at).toLocaleDateString()}</td><td>{item.transaction_reference}</td><td><span className={`badge ${item.status === "ACTIVE" && new Date(item.expires_at) > new Date() ? "text-bg-success" : "text-bg-secondary"}`}>{item.status}</span></td></tr>)}{(dashboard.subscriptions || []).length === 0 && <EmptyRow colSpan={7} text="No subscriptions yet." />}</tbody></table></div></div>}
 
           {activeSection === "customers" && (
           <div className="eco-card p-0 overflow-hidden mb-3">

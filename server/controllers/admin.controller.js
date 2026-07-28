@@ -8,6 +8,7 @@ const Customer = require("../models/customer.model");
 const SiteSettings = require("../models/siteSettings.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const { mediaUrl, deleteMediaUrl } = require("../utils/mediaFile");
+const Subscription = require("../models/subscription.model");
 
 function toServiceImageUrl(file) {
   return mediaUrl(file, "service") || "";
@@ -51,7 +52,7 @@ exports.login = async (req, res) => {
 
 exports.dashboard = async (req, res) => {
   try {
-    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings, changeRequests, bookingFeeSummary, bookingFees, workPayments] = await Promise.all([
+    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings, changeRequests, bookingFeeSummary, bookingFees, workPayments, subscriptions, subscriptionRevenue] = await Promise.all([
       Partner.adminListPartnersByStatus("PENDING"),
       Partner.adminListPartnersByStatus("APPROVED"),
       Booking.listBookingsForAdmin(),
@@ -63,7 +64,9 @@ exports.dashboard = async (req, res) => {
       BookingChangeRequest.listForAdmin(),
       Booking.getBookingFeeSummary(),
       Booking.listBookingFeesForAdmin(),
-      Booking.listWorkPaymentsForAdmin()
+      Booking.listWorkPaymentsForAdmin(),
+      Subscription.listForAdmin(),
+      Subscription.revenueForAdmin()
     ]);
 
     const summary = {
@@ -79,6 +82,8 @@ exports.dashboard = async (req, res) => {
       unread_contacts: contacts.length,
       total_customers: customers.length,
       total_partners: allPartners.length
+      ,subscription_revenue: subscriptionRevenue.total,
+      active_subscriptions: subscriptionRevenue.active_count
     };
 
     return res.json({
@@ -94,7 +99,9 @@ exports.dashboard = async (req, res) => {
         changeRequests,
         bookingFeeSummary,
         bookingFees,
-        workPayments
+        workPayments,
+        subscriptions,
+        subscriptionRevenue
       }
     });
   } catch (err) {

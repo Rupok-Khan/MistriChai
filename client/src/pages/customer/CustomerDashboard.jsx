@@ -47,6 +47,8 @@ export default function CustomerDashboard() {
   const [activeSection, setActiveSection] = useState("overview");
   const [form, setForm] = useState({ name: "", email: "", mobile: "", address: "" });
   const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "" });
+  const [subscriptionPlan, setSubscriptionPlan] = useState("SIX_MONTHS");
+  const [subscriptionTrx, setSubscriptionTrx] = useState("");
   const [replacementBooking, setReplacementBooking] = useState(null);
   const [replacementPartners, setReplacementPartners] = useState([]);
   const [replacementLoading, setReplacementLoading] = useState(false);
@@ -231,6 +233,15 @@ export default function CustomerDashboard() {
     }
   };
 
+  const subscribe = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await CustomerService.subscribe({ plan_code: subscriptionPlan, bkash_trx_id: subscriptionTrx });
+      setMe((prev) => ({ ...prev, subscription: res.data }));
+      setSubscriptionTrx("");
+    } catch (e2) { setErr(e2.message); }
+  };
+
   const submitWorkPayment = async (id) => {
     try { await CustomerService.submitWorkPayment(id, { bkash_trx_id: workTrxIds[id] }); await loadAll(); }
     catch (e) { setErr(e.message); }
@@ -310,6 +321,7 @@ export default function CustomerDashboard() {
     { key: "cancellations", label: "Cancellation Requests", count: cancellationRequests.filter((item) => item.status === "PENDING").length },
     { key: "previous", label: "Order History", count: previousBookings.length },
     { key: "payments", label: "Payments", count: payments.length },
+    { key: "subscription", label: "Subscription" },
     { key: "chat", label: "Chat Help" },
     { key: "support", label: "Support Messages", count: supportMessages.length }
   ];
@@ -356,6 +368,7 @@ export default function CustomerDashboard() {
                 {activeSection === "cancellations" && "Cancellation Requests"}
                 {activeSection === "previous" && "Previous Orders"}
                 {activeSection === "payments" && "Payment History"}
+                {activeSection === "subscription" && "Customer Subscription"}
                 {activeSection === "chat" && "Live Chat"}
                 {activeSection === "support" && "Support Messages"}
               </div>
@@ -368,6 +381,7 @@ export default function CustomerDashboard() {
                 {activeSection === "cancellations" && "Request cancellation with a reason and optional proof. Admin must approve it."}
                 {activeSection === "previous" && "Review completed, refunded, and closed bookings."}
                 {activeSection === "payments" && "See your payment and refund history."}
+                {activeSection === "subscription" && "Choose a plan and avoid the booking fee for every job during its active period."}
                 {activeSection === "chat" && "Chat becomes available after a technician is assigned to your order."}
                 {activeSection === "support" && "Send a support message to admin and view admin replies."}
               </div>
@@ -436,6 +450,8 @@ export default function CustomerDashboard() {
               ]} highlight={`${currentBookings.length} active`} />
               </>
             )}
+
+            {activeSection === "subscription" && <div className="eco-card p-4"><h5 className="fw-bold">Booking Fee Subscription</h5><p className="small-muted">Customer subscriptions apply only to booking fees. Service charges paid to technicians are not included.</p>{me.subscription ? <div className="alert alert-success">Active {me.subscription.plan_code === "ONE_YEAR" ? "1-year" : "6-month"} plan · valid until <b>{new Date(me.subscription.expires_at).toLocaleDateString()}</b>. All job booking fees are ৳0 during this period.</div> : <form onSubmit={subscribe} className="row g-3"><div className="col-md-6"><label className="form-label">Plan</label><select className="form-select" value={subscriptionPlan} onChange={(e) => setSubscriptionPlan(e.target.value)}><option value="SIX_MONTHS">6 months — ৳99</option><option value="ONE_YEAR">1 year — ৳199</option></select></div><div className="col-md-6"><label className="form-label">bKash Transaction ID</label><input className="form-control" value={subscriptionTrx} onChange={(e) => setSubscriptionTrx(e.target.value)} minLength="6" maxLength="50" required /></div><div className="col-12"><div className="alert alert-info">Send the selected amount to bKash <b>01984646174</b>, then submit the transaction ID. The subscription activates immediately.</div></div><div className="col-12"><button className="btn eco-btn">Activate Subscription</button></div></form>}</div>}
 
             {activeSection === "notifications" && (
               <div className="eco-card p-4">

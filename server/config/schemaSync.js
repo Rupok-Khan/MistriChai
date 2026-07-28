@@ -223,6 +223,14 @@ async function ensurePartnerChangeAndQuoteApprovalSchema() {
 }
 
 async function syncSchema() {
+  await db.query(`CREATE TABLE IF NOT EXISTS customer_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY, customer_user_id INT NOT NULL,
+    plan_code ENUM('SIX_MONTHS','ONE_YEAR') NOT NULL, amount DECIMAL(10,2) NOT NULL,
+    starts_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, expires_at DATETIME NOT NULL,
+    status ENUM('ACTIVE','EXPIRED','CANCELLED') NOT NULL DEFAULT 'ACTIVE',
+    transaction_reference VARCHAR(100) NOT NULL UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
   await ensureWorkPaymentTable();
   await ensureChatAttachmentColumns();
   await ensureContactMessageColumns();
