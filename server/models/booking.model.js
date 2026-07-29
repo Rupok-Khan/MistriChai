@@ -172,8 +172,8 @@ async function approveBookingPayment(bookingId) {
 async function listBookingsForCustomer(customerUserId) {
   const [rows] = await pool.query(
     `SELECT b.*,
-            pay.status AS payment_status,
-            pay.payment_method AS booking_payment_method,
+            COALESCE(pay.status, CASE WHEN b.booking_fee = 0 THEN 'PAID' END) AS payment_status,
+            COALESCE(pay.payment_method, CASE WHEN b.booking_fee = 0 THEN 'SUBSCRIPTION' END) AS booking_payment_method,
             pay.transaction_reference AS bkash_trx_id,
             rp.first_name AS requested_partner_first_name,
             rp.last_name AS requested_partner_last_name,
@@ -222,8 +222,8 @@ async function listOrderHistoryForPartner(partnerUserId) {
 async function listBookingsForAdmin() {
   const [rows] = await pool.query(
     `SELECT b.*,
-            pay.status AS payment_status,
-            pay.payment_method AS booking_payment_method,
+            COALESCE(pay.status, CASE WHEN b.booking_fee = 0 THEN 'PAID' END) AS payment_status,
+            COALESCE(pay.payment_method, CASE WHEN b.booking_fee = 0 THEN 'SUBSCRIPTION' END) AS booking_payment_method,
             pay.transaction_reference AS bkash_trx_id,
             cu.name AS customer_name,
             cu.mobile AS customer_mobile,
@@ -245,8 +245,8 @@ async function listBookingsForAdmin() {
 async function getBookingById(bookingId) {
   const [rows] = await pool.query(
     `SELECT b.*,
-            pay.status AS payment_status,
-            pay.payment_method AS booking_payment_method,
+            COALESCE(pay.status, CASE WHEN b.booking_fee = 0 THEN 'PAID' END) AS payment_status,
+            COALESCE(pay.payment_method, CASE WHEN b.booking_fee = 0 THEN 'SUBSCRIPTION' END) AS booking_payment_method,
             pay.transaction_reference AS bkash_trx_id,
             cu.name AS customer_name,
             cu.mobile AS customer_mobile,

@@ -963,8 +963,8 @@ export default function AdminDashboard() {
                       <td>{booking.customer_name}</td>
                       <td><div>{serviceLabelMap[booking.category] || booking.category}</div>{booking.requested_partner_first_name && <div className="small-muted">Requested: <b>{booking.requested_partner_first_name} {booking.requested_partner_last_name}</b></div>}</td>
                       <td style={{ minWidth: 190 }}>
-                        <div><b>৳{Number(booking.booking_fee || 0).toFixed(0)}</b> via bKash</div>
-                        <div className="small-muted">TrxID: {booking.bkash_trx_id || "Not provided"}</div>
+                        <div><b>৳{Number(booking.booking_fee || 0).toFixed(0)}</b> {Number(booking.booking_fee || 0) === 0 ? "via subscription" : "via bKash"}</div>
+                        <div className="small-muted">TrxID: {booking.bkash_trx_id || (Number(booking.booking_fee || 0) === 0 ? "Subscription active" : "Not provided")}</div>
                         <span className={`badge mt-1 ${booking.payment_status === "PAID" ? "text-bg-success" : "text-bg-warning"}`}>
                           {booking.payment_status || "UNKNOWN"}
                         </span>
