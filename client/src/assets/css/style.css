@@ -1133,6 +1133,46 @@ body{
   .services-catalog-page .modern-service-card:hover .service-page-img{transform:none}
 }
 
+/* Image crop corrections for people-focused service photography. */
+.services-catalog-page .service-page-img-wrap{
+  aspect-ratio:4/3!important;
+  border-radius:18px!important;
+}
+.services-catalog-page .service-page-img{
+  object-fit:cover!important;
+  object-position:center 38%!important;
+}
+.services-catalog-page .modern-service-card:nth-child(2n) .service-page-img{object-position:center 32%!important}
+.services-catalog-page .modern-service-card:nth-child(3n) .service-page-img{object-position:center 42%!important}
+.about-page .about-hero-visual img{
+  aspect-ratio:3/2;
+  min-height:0!important;
+  object-position:center 34%;
+}
+.about-page .about-image-card{
+  height:auto!important;
+  aspect-ratio:4/3;
+}
+.about-page .about-image-card img{
+  object-position:center 36%;
+}
+.about-page .about-audience-card img{
+  display:block;
+  height:auto!important;
+  aspect-ratio:4/3;
+  object-position:center 34%;
+}
+.about-page .about-audience-card.about-audience-partner img{
+  object-position:center 30%;
+}
+
+@media(max-width:767.98px){
+  .services-catalog-page .service-page-img-wrap,
+  .about-page .about-image-card,
+  .about-page .about-audience-card img{aspect-ratio:1.12/1}
+  .about-page .about-hero-visual img{aspect-ratio:4/3}
+}
+
 /* Homepage typography: readable dark copy at every size */
 .home-wrap,.home-wrap p,.home-wrap .small-muted,.home-wrap small,.home-wrap label,.home-wrap .strip-text,.home-wrap .service-desc,.home-wrap .team-desc{color:#111827!important}
 .home-wrap p,.home-wrap .small-muted{font-size:1rem!important;line-height:1.6!important}.home-wrap small{font-size:.88rem!important}
