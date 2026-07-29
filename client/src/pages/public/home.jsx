@@ -220,6 +220,19 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="home-finder container">
+        <div className="finder-heading"><div className="home-services-eyebrow">QUICK SERVICE FINDER</div><h2>What service do you need?</h2><p>Find the right professional for your home service in just a few steps.</p></div>
+        <div className="finder-form">
+          <label>Service Category<select defaultValue=""><option value="" disabled>Select a service</option>{services.map((item) => <option key={item.key}>{item.title}</option>)}</select></label>
+          <label>Location<select defaultValue=""><option value="" disabled>Choose your area</option><option>Dhaka</option><option>Chattogram</option><option>Other area</option></select></label>
+          <Link className="btn home-green-btn" to="/services">Find Professionals</Link>
+        </div>
+        <Link className="finder-link" to="/team">Already know who you want to book? Browse verified professionals →</Link>
+      </section>
+
+      <section className="home-steps">
+        <div className="container text-center"><div className="home-purple-label">SIMPLE BOOKING</div><h2>Get help in a few simple steps</h2><p>Finding professional help shouldn't be complicated.</p><div className="steps-grid">{[["01","Choose a Service","Select the service you need and share the details."],["02","Find a Professional","Browse approved professionals by service and location."],["03","Book & Schedule","Choose a suitable time and provide your booking details."],["04","Get the Job Done","Follow your booking and rate the service after completion."]].map(([n,t,d])=><article key={n}><span>{n}</span><h3>{t}</h3><p>{d}</p></article>)}</div><Link className="btn home-green-btn" to="/services">Book Your First Service</Link></div>
+      </section>
       <TeamSection />
       <HomeHero content={{ ...promo, leftImageUrl: resolveContentImage(promo?.leftImageUrl, ""), rightImageUrl: resolveContentImage(promo?.rightImageUrl, "") }} allowLocalFallback={useLocalImages} />
 
@@ -267,6 +280,8 @@ export default function Home() {
         </section>}
 
         <HomeContactSection content={contact} />
+
+        <section className="home-final-cta"><h2>Need something fixed?</h2><p>Choose your service, find an approved professional, and start your booking today.</p><div><Link className="btn home-green-btn" to="/services">Book a Service</Link><Link className="btn home-white-btn" to="/services">Browse Services</Link></div></section>
       </section>
     </div>
   );
