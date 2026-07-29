@@ -179,3 +179,95 @@ Password কখনো plain text নয়; bcrypt hash। SQL parameterized। COR
 শেষ কথা
 --------
 কোনো feature পরিবর্তন করলে সংশ্লিষ্ট route -> controller -> model/schema -> frontend service -> page/component এই chain পরীক্ষা করতে হবে। Database status বা permission বদলালে customer, partner ও admin—তিনটি dashboard-এর state transition এবং security ownership test করা আবশ্যক।
+
+১৮. Advanced Technical Implementation Notes
+-------------------------------------------
+
+১৮.১ Database schema evolution
+------------------------------
+শুধু schema.sql পরিবর্তন করলেই production database-এর পুরোনো table আপডেট হয় না। তাই server/config/schemaSync.js-এ idempotent migration-style check রাখা হয়েছে। Server startup-এ missing table, column এবং index তৈরি করা হয়। ফলে নতুন deployment-এ database manually recreate না করেও schema update করা যায়।
+
+এই iteration-এ তিনটি গুরুত্বপূর্ণ database design যোগ হয়েছে:
+
+১) idempotency_keys: একই user-এর একই request পুনরায় এলে একই entity ফেরত দেওয়ার জন্য। idempotency_key + scope composite unique key duplicate request আটকায়। Scope ব্যবহার করা হয়েছে যাতে দুই customer একই random key পাঠালেও তারা একে অপরের booking block না করে।
+
+২) audit_logs: কে কোন business action করেছে তার history। actor user/role, action, entity type/id, before_json, after_json, request_id, IP এবং timestamp রাখা হয়। Debugging ও dispute resolution-এ current table value যথেষ্ট নয়; audit log পরিবর্তনের ইতিহাস দেয়।
+
+৩) platform_commissions: final work payment-এর gross amount, 4% rate, commission amount এবং partner-এর net amount আলাদা করে সংরক্ষণ করে। Admin revenue wallet balance থেকে অনুমান না করে এই ledger table থেকে হিসাব করে।
+
+১৮.২ Database index ও query performance
+----------------------------------------
+বড় table-এ full table scan হলে traffic বাড়ার সঙ্গে response time খারাপ হয়। Query pattern অনুযায়ী composite index দেওয়া হয়েছে:
+
+* service_bookings(customer_user_id, status, booked_at): customer dashboard booking query।
+* service_bookings(assigned_partner_user_id, status, assigned_at): partner order list।
+* service_bookings(status, booked_at): admin status filter/recent booking।
+* payment_transactions(booking_id, transaction_type, status): payment join/status validation।
+* booking_messages(booking_id, created_at, id): chronological chat query।
+* wallet_transactions(partner_user_id, transaction_type, status, created_at): wallet history ও pending withdrawal।
+* booking_change_requests(status, created_at): admin pending request queue।
+
+সব column-এ index দেওয়া হয়নি, কারণ প্রতিটি index write/update-এ অতিরিক্ত খরচ ও disk নেয়। WHERE, JOIN এবং ORDER BY-তে নিয়মিত ব্যবহৃত field-ই বেছে নেওয়া হয়েছে।
+
+১৮.৩ Atomic booking ও payment transaction
+------------------------------------------
+Manual booking fee-সহ booking তৈরি করার সময় service_bookings এবং payment_transactions—দুইটি logical write হয়। প্রথমটি সফল কিন্তু দ্বিতীয়টি ব্যর্থ হলে payment ছাড়া PAYMENT_PENDING booking থেকে যেতে পারত। createBookingWithPayment() এই write-গুলো একই MySQL transaction-এ চালায়:
+
+BEGIN → booking insert → booking code update → payment insert → idempotency key insert → COMMIT
+
+যেকোনো exception হলে ROLLBACK হয়। finally block-এ connection release করা হয়, ফলে connection pool exhaustion কমে। Subscription customer-এর booking fee নেই, তাই payment insert হয় না; booking সরাসরি PENDING_ASSIGNMENT হয় এবং query-level payment status PAID হিসেবে প্রকাশ করা হয়।
+
+১৮.৪ Idempotency ও duplicate request
+-------------------------------------
+Double-click, slow network retry অথবা mobile browser পুনরায় request পাঠালে একই booking দুইবার তৈরি হতে পারে। Frontend CustomerService.createBooking() একটি Idempotency-Key পাঠায়। Backend key-টি customer scope-এর সঙ্গে database-এ রাখে। Key আগে থাকলে নতুন insert না করে আগের booking id ফেরত দেয়।
+
+এটি শুধু button disable-এর উপর নির্ভর করে না; database unique constraint এবং backend lookup authoritative protection। bKash transaction reference-এর উপরও unique constraint আছে, ফলে একই payment reference দ্বিতীয় booking-এ ব্যবহার করা যায় না।
+
+১৮.৫ Wallet ও 4% commission settlement
+----------------------------------------
+Final work amount gross হিসেবে G এবং platform rate R = 0.04 হলে:
+
+commission = round(G × R, 2)
+partner_net = round(G - commission, 2)
+
+উদাহরণ: G = ৳১০০০ হলে commission = ৳৪০ এবং partner_net = ৳৯৬০। Wallet.creditCompletedWork() একই transaction-এ duplicate CREDIT পরীক্ষা, partner wallet-এ net balance যোগ, wallet ledger insert এবং platform_commissions insert করে। সব সফল হলে COMMIT হয়।
+
+Completion endpoint পুনরায় call হলেও একই partner ও booking-এর CREDIT আগে আছে কি না FOR UPDATE দিয়ে পরীক্ষা হয়। Withdrawal-এর সময় withdrawal row এবং wallet row lock করা হয়; দুইজন admin একই withdrawal pay করতে চাইলেও দ্বিতীয় request processed status দেখে থেমে যায়। Wallet reserve ৳১০০-এর নিচে নামতে দেওয়া হয় না।
+
+১৮.৬ Subscription-এর server authority
+--------------------------------------
+Plan price client-side display হলেও final authority backend Subscription.PLANS:
+
+ONE_MONTH = ১ মাস, ৳৩০
+SIX_MONTHS = ৬ মাস, ৳১৪৯
+ONE_YEAR = ১২ মাস, ৳২৫০
+
+Client amount edit করলেও server plan_code দিয়ে নিজেই amount/months নির্ধারণ করে। Active subscription query expired record-কে EXPIRED করে এবং expires_at > NOW() record নেয়। Subscription booking-এ booking_fee শূন্য; admin approval কেবল PAYMENT_PENDING booking-এর জন্য প্রযোজ্য।
+
+১৮.৭ Backend request lifecycle ও error strategy
+------------------------------------------------
+Security middleware request id তৈরি করে; এটি response header এবং audit log-এ ব্যবহার করা যায়। Route authentication/role check-এর পরে controller চলে। Controller validation, ownership, status transition, model call এবং safe response পরিচালনা করে। Model SQL query ও database result পরিচালনা করে।
+
+Status-এর অর্থ: 400 invalid input/workflow, 401 invalid login/token, 403 permission নেই, 404 resource নেই/অন্যের resource, 409 duplicate বা state conflict, 429 rate limit, 500 unexpected server/database error। Production-এ 500 response থেকে stack সরানো হলেও request_id রাখা হয়।
+
+১৮.৮ Ownership ও authorization
+------------------------------
+JWT valid হলেই booking access দেওয়া হয় না। Customer controller customer_user_id-এর সঙ্গে req.user.id মিলায়; Partner controller assigned_partner_user_id-এর সঙ্গে নিজের id মিলায়; Admin আলাদা middleware দিয়ে protected। Assignment-এ payment_status PAID, valid partner এবং PENDING_ASSIGNMENT/WAITING_FOR_PARTNER—সব condition backend-এ পরীক্ষা হয়। শুধু frontend button disabled নিরাপত্তা নয়।
+
+১৮.৯ Frontend state ও data fetching
+------------------------------------
+Dashboard load function Promise.all দিয়ে independent API call parallel চালায়। loading শুরুতে true, success-এ state update, failure-এ error, finally-তে loading false। `work-payments` response-এ `data: []` error নয়; এর অর্থ কোনো final payment request এখনো নেই।
+
+Booking page-এ selected partner, bookingStep, form state এবং subscription state আলাদা রাখা হয়েছে। Step 1 details, Step 2 schedule, Step 3 payment/review—বড় form-এর cognitive load কমায়। `required` browser validation দেয় এবং CSS `:has()` selector label-এর পাশে automatic লাল asterisk দেখায়; backend validation আলাদা থাকে, কারণ browser validation bypass করা যায়।
+
+API wrapper JSON ও FormData আলাদা handle করে। File upload-এ Content-Type manually set করা হয় না; browser multipart boundary বসায়। 401 হলে customer/partner refresh flow চেষ্টা হয়; admin token-এর ক্ষেত্রে session expired event দিয়ে login-এ পাঠানো হয়।
+
+১৮.১০ CORS custom header debugging
+-----------------------------------
+Idempotency-Key custom request header হওয়ায় browser cross-origin POST-এর আগে OPTIONS preflight পাঠায়। Backend CORS allowedHeaders-এ header না থাকলে browser POST পাঠাতে দেয় না এবং “Request header field idempotency-key is not allowed” দেখায়। তাই app.js-এ Idempotency-Key allow করা হয়েছে।
+
+Network tab developer-only diagnostic data; authenticated response সম্পূর্ণ গোপন করা যায় না। Sensitive data কমানোর নিয়ম হলো প্রয়োজনীয় field মাত্র পাঠানো, password/secret না পাঠানো এবং server-side authorization রাখা।
+
+১৮.১১ বর্তমান limitation ও পরের production step
+-------------------------------------------------
+বর্তমান payment manual bKash reference-based; real gateway webhook এখনো নেই। Commission completion-এর পরে wallet-এ settle হয়। পরের ধাপে payment gateway/signed webhook, commission refund policy, private NID storage, automated tests, audit viewer, centralized monitoring, backup/restore drill, Redis/WebSocket notification এবং versioned migration যোগ করা যায়।
