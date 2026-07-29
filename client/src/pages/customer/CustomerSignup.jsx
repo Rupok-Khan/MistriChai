@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { AuthService } from "../../services/auth.service";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function CustomerSignup() {
   const { login } = useContext(AuthContext);
@@ -51,7 +52,7 @@ export default function CustomerSignup() {
               </div>
               <div className="col-12 col-md-6">
                 <label className="form-label">Password</label>
-                <input type="password" className="form-control" value={form.password} onChange={(e) => onChange("password", e.target.value)} required />
+                <PasswordInput value={form.password} onChange={(e) => onChange("password", e.target.value)} required autoComplete="new-password" />
               </div>
               <div className="col-12">
                 <label className="form-label">Address</label>

@@ -4,6 +4,7 @@ import { AuthService } from "../../services/auth.service";
 import { AuthContext } from "../../context/AuthContext";
 import { DEFAULT_SERVICE_OPTIONS, normalizeServiceOptions } from "../../utils/serviceCatalog";
 import { SiteContentService } from "../../services/siteContent.service";
+import PasswordInput from "../../components/PasswordInput";
 
 function StepHeader({ step }) {
   const pct = step === 1 ? 33 : step === 2 ? 66 : 100;
@@ -498,13 +499,12 @@ export default function PartnerSignup() {
 
                   <div className="col-12 col-md-6">
                     <label className="form-label">Password</label>
-                    <input
-                      type="password"
-                      className="form-control"
+                    <PasswordInput
                       value={form.password}
                       onChange={(e) => setField("password", e.target.value)}
                       required
                       minLength={6}
+                      autoComplete="new-password"
                     />
                     <div className="small-muted mt-1">Minimum 6 characters.</div>
                   </div>

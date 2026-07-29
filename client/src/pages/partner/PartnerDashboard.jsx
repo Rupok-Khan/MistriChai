@@ -10,6 +10,7 @@ import DashboardPagination from "../../components/DashboardPagination";
 import DashboardInsights from "../../components/DashboardInsights";
 import { paginate } from "../../utils/pagination";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
+import PasswordInput from "../../components/PasswordInput";
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -511,10 +512,10 @@ export default function PartnerDashboard() {
                 <div className="fw-bold mb-2">Security</div>
                 <form className="row g-2" onSubmit={changePassword}>
                   <div className="col-12">
-                    <input type="password" className="form-control" placeholder="Current password" value={passwordForm.current_password} onChange={(e) => setPasswordForm((p) => ({ ...p, current_password: e.target.value }))} />
+                    <PasswordInput placeholder="Current password" value={passwordForm.current_password} onChange={(e) => setPasswordForm((p) => ({ ...p, current_password: e.target.value }))} autoComplete="current-password" />
                   </div>
                   <div className="col-12">
-                    <input type="password" className="form-control" placeholder="New password" value={passwordForm.new_password} onChange={(e) => setPasswordForm((p) => ({ ...p, new_password: e.target.value }))} />
+                    <PasswordInput placeholder="New password" value={passwordForm.new_password} onChange={(e) => setPasswordForm((p) => ({ ...p, new_password: e.target.value }))} autoComplete="new-password" />
                   </div>
                   <div className="col-12">
                     <button className="btn eco-btn-outline">Change Password</button>

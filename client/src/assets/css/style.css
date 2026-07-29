@@ -1173,6 +1173,14 @@ body{
   .about-page .about-hero-visual img{aspect-ratio:4/3}
 }
 
+/* Shared password show/hide control */
+.password-input-wrap{position:relative}
+.password-input-wrap .form-control{padding-right:76px}
+.password-toggle-btn{position:absolute;right:8px;top:50%;min-width:58px;height:34px;transform:translateY(-50%);border:1px solid #cbd8d2;border-radius:999px;color:#0b3d2e;background:#f4fbf7;font-size:.78rem;font-weight:850;line-height:1}
+.password-toggle-btn:hover{color:#fff;border-color:#0b3d2e;background:#0b3d2e}
+.password-toggle-btn:focus-visible{outline:3px solid rgba(20,106,78,.2);outline-offset:2px}
+[data-theme="dark"] .password-toggle-btn{color:#eef8f2;border-color:var(--dark-border);background:#1a3027}
+
 /* Homepage typography: readable dark copy at every size */
 .home-wrap,.home-wrap p,.home-wrap .small-muted,.home-wrap small,.home-wrap label,.home-wrap .strip-text,.home-wrap .service-desc,.home-wrap .team-desc{color:#111827!important}
 .home-wrap p,.home-wrap .small-muted{font-size:1rem!important;line-height:1.6!important}.home-wrap small{font-size:.88rem!important}

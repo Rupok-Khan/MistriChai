@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AdminService } from "../../services/admin.service";
 import { getAdminToken, getAdminUser, setAdminAuth } from "../../utils/adminAuth";
 import LoginLayout from "../../components/LoginLayout";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -61,12 +62,11 @@ export default function AdminLogin() {
 
               <div className="mb-3">
                 <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  className="form-control"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                 />
               </div>
 

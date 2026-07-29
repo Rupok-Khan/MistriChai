@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { AuthService } from "../../services/auth.service";
 import LoginLayout from "../../components/LoginLayout";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function PartnerLogin() {
   const { login } = useContext(AuthContext);
@@ -37,7 +38,7 @@ export default function PartnerLogin() {
               </div>
               <div className="mb-3">
                 <label className="form-label">Password</label>
-                <input type="password" className="form-control" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
               </div>
               <button className="btn eco-btn w-100">Login</button>
             </form>

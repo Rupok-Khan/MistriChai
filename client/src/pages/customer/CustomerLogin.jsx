@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { AuthService } from "../../services/auth.service";
 import LoginLayout from "../../components/LoginLayout";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function CustomerLogin() {
   const { login } = useContext(AuthContext);
@@ -60,9 +61,7 @@ export default function CustomerLogin() {
 
               <div className="mb-3">
                 <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  className="form-control"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
