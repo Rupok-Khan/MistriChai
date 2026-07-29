@@ -263,8 +263,11 @@ export default function Home() {
             </div>
             <div className="col-12 col-lg-7"><div className="why-feature-grid">{[
               ["01", whyChoose.itemOneTitle || "Verified professionals", whyChoose.itemOneText || "Partner identity and service information are reviewed before approval."],
-              ["02", whyChoose.itemTwoTitle || "Clear service workflow", whyChoose.itemTwoText || "Track every step from your dashboard."],
-              ["03", whyChoose.itemThreeTitle || "Local and responsive", whyChoose.itemThreeText || "Find nearby technicians with live availability."]
+              ["02", whyChoose.itemTwoTitle || "Convenient booking", whyChoose.itemTwoText || "Request a service with your problem, location, date, and time."],
+              ["03", whyChoose.itemThreeTitle || "Find by service & location", whyChoose.itemThreeText || "Browse approved professionals based on relevant service categories."],
+              ["04", "Booking communication", "Communicate about supported bookings through the platform."],
+              ["05", "Booking support", "Manage supported changes, cancellations, and booking requests."],
+              ["06", "Customer ratings", "Rate completed bookings and share feedback about your experience."]
             ].map(([number, title, text]) => <article className="why-feature-card" key={number}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div></div>
           </div>
         </section>
