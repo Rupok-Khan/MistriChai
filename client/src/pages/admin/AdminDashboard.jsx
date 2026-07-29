@@ -109,6 +109,7 @@ export default function AdminDashboard() {
   const [siteSaving, setSiteSaving] = useState(false);
   const [siteEditor, setSiteEditor] = useState(null);
   const [heroImageFile, setHeroImageFile] = useState(null);
+  const [aboutImageFiles, setAboutImageFiles] = useState({ hero: null, story: null });
   const [promoImageFiles, setPromoImageFiles] = useState({ left: null, right: null });
   const [contacts, setContacts] = useState([]);
   const [replyForm, setReplyForm] = useState({});
@@ -121,7 +122,8 @@ export default function AdminDashboard() {
     desc: "",
     imageUrl: "",
     imageFile: null,
-    removeImage: false
+    removeImage: false,
+    active: true
   });
   const updateReview = (index, field, value) => setSiteForm((prev) => ({
     ...prev,
@@ -363,18 +365,21 @@ export default function AdminDashboard() {
       setSiteSaving(true);
       setErr("");
       let payload = siteForm;
-      if (heroImageFile || promoImageFiles.left || promoImageFiles.right) {
+      if (heroImageFile || promoImageFiles.left || promoImageFiles.right || aboutImageFiles.hero || aboutImageFiles.story) {
         payload = new FormData();
         payload.append("settings", JSON.stringify(siteForm));
         if (heroImageFile) payload.append("hero_image", heroImageFile);
         if (promoImageFiles.left) payload.append("promo_left_image", promoImageFiles.left);
         if (promoImageFiles.right) payload.append("promo_right_image", promoImageFiles.right);
+        if (aboutImageFiles.hero) payload.append("about_hero_image", aboutImageFiles.hero);
+        if (aboutImageFiles.story) payload.append("about_story_image", aboutImageFiles.story);
       }
       const res = await AdminService.updateSiteContent(payload);
       const updatedSettings = res.data || {};
       setSiteForm(updatedSettings);
       setDashboard((prev) => ({ ...prev, siteSettings: updatedSettings }));
       setHeroImageFile(null);
+      setAboutImageFiles({ hero: null, story: null });
       setPromoImageFiles({ left: null, right: null });
     } catch (e) {
       setErr(e.message);
@@ -422,7 +427,7 @@ export default function AdminDashboard() {
 
   const resetServiceDraft = () => {
     setEditingServiceKey(null);
-    setServiceDraft({ key: "", title: "", desc: "", imageUrl: "", imageFile: null, removeImage: false });
+    setServiceDraft({ key: "", title: "", desc: "", imageUrl: "", imageFile: null, removeImage: false, active: true });
   };
 
   const startServiceEdit = (item) => {
@@ -433,7 +438,8 @@ export default function AdminDashboard() {
       desc: item.desc || "",
       imageUrl: item.imageUrl || "",
       imageFile: null,
-      removeImage: false
+      removeImage: false,
+      active: item.active !== false
     });
     setShowServiceModal(true);
   };
@@ -450,6 +456,7 @@ export default function AdminDashboard() {
     payload.append("key", serviceDraft.key || "");
     payload.append("title", serviceDraft.title || "");
     payload.append("desc", serviceDraft.desc || "");
+    payload.append("active", serviceDraft.active === false ? "false" : "true");
     if (editingServiceKey && serviceDraft.removeImage) {
       payload.append("remove_image", "1");
     }
@@ -628,7 +635,7 @@ export default function AdminDashboard() {
               </div>
               <div className="language-control"><span><b>Website Language</b><small>Switch the entire website language</small></span><div className="btn-group"><button className={`btn btn-sm ${siteForm.preferences?.language !== "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("ENGLISH")}>English</button><button className={`btn btn-sm ${siteForm.preferences?.language === "BANGLA" ? "eco-btn" : "eco-btn-outline"}`} disabled={siteSaving} onClick={() => changeSiteLanguage("BANGLA")}>বাংলা</button></div></div>
             </div>
-            <div className="site-content-grid">{[["home","Home Hero","Hero text, images, buttons and highlights"],["why","Why Choose Us","Homepage trust points"],["reviews","Reviews","Seven animated customer reviews"],["promo","Promo Section","Homepage promotional content"],["about","About Page","Mission, vision and about copy"],["contact","Contact Details","Support and contact information"],["login-customer","Customer Login","Customer login image-panel content"],["login-partner","Partner Login","Partner login image-panel content"],["login-admin","Admin Login","Admin login image-panel content"]].map(([key,title,description]) => <button type="button" className="site-content-card" key={key} onClick={() => setSiteEditor(key)}><span className="site-content-icon">{title.charAt(0)}</span><span><b>{title}</b><small>{description}</small></span><span className="site-content-arrow">→</span></button>)}</div>
+            <div className="site-content-grid">{[["home","Home Hero","Hero text, images, buttons and highlights"],["services-page","Services Page","Hero, search, support and final CTA text"],["why","Why Choose Us","Homepage trust points"],["reviews","Reviews","Seven animated customer reviews"],["promo","Promo Section","Homepage promotional content"],["about","About Page","Mission, vision, story copy and images"],["contact","Contact Details","Support and contact information"],["login-customer","Customer Login","Customer login image-panel content"],["login-partner","Partner Login","Partner login image-panel content"],["login-admin","Admin Login","Admin login image-panel content"]].map(([key,title,description]) => <button type="button" className="site-content-card" key={key} onClick={() => setSiteEditor(key)}><span className="site-content-icon">{title.charAt(0)}</span><span><b>{title}</b><small>{description}</small></span><span className="site-content-arrow">→</span></button>)}</div>
 
             {siteEditor && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSiteEditor(null)}><div className="payout-modal site-content-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">Edit Site Content</h5><div className="small-muted">Update this section and save your changes.</div></div><button className="btn-close" aria-label="Close" onClick={() => setSiteEditor(null)} /></div><div className="row g-4 site-editor-content" data-section={siteEditor}>
               <div className="col-12 site-home">
@@ -692,6 +699,41 @@ export default function AdminDashboard() {
                     <div className="col-12 col-md-8">
                       <input className="form-control" placeholder="Strip three text" value={siteForm.home?.stripThreeText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, home: { ...p.home, stripThreeText: e.target.value } }))} />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-12 site-services-page">
+                <div className="border rounded-4 p-3">
+                  <div className="fw-bold mb-1">Services Page Text</div>
+                  <div className="small-muted mb-3">Edit public Services page headings, helper text, support block, and final call-to-action.</div>
+                  <div className="row g-2">
+                    {[
+                      ["heroLabel", "Hero label", false, "HOME SERVICES"],
+                      ["heroTitle", "Hero headline", false, "Professional Help for Your Home, Made Simple."],
+                      ["heroDescription", "Hero description", true, "Explore available MistriChai services and connect with approved professionals..."],
+                      ["heroSecondaryText", "Hero secondary text", true, "Choose what you need, find a professional, select your preferred schedule..."],
+                      ["searchTitle", "Search panel heading", false, "What do you need help with?"],
+                      ["searchHint", "Search panel helper text", true, "Browse by category or explore all available services below."],
+                      ["servicesLabel", "Services section label", false, "OUR SERVICES"],
+                      ["servicesTitle", "Services section headline", false, "Everything Your Home Needs, All in One Place."],
+                      ["servicesDescription", "Services section description", true, "Browse our available service categories and choose the help you need."],
+                      ["supportLabel", "Support section label", false, "NEED SOMETHING ELSE?"],
+                      ["supportTitle", "Support section headline", false, "Can't find the service you're looking for?"],
+                      ["supportText", "Support section text", true, "Tell our support team what you need..."],
+                      ["finalLabel", "Final CTA label", false, "GET STARTED"],
+                      ["finalTitle", "Final CTA headline", false, "Your Home Needs Help. MistriChai Makes Finding It Easier."],
+                      ["finalText", "Final CTA text", true, "Choose a service, connect with an approved professional..."]
+                    ].map(([field, label, multiline, placeholder]) => (
+                      <div className={multiline ? "col-12" : "col-12 col-md-6"} key={field}>
+                        <label className="form-label">{label}</label>
+                        {multiline ? (
+                          <textarea className="form-control" rows="3" placeholder={placeholder} value={siteForm.servicesPage?.[field] || ""} onChange={(e) => setSiteForm((p) => ({ ...p, servicesPage: { ...p.servicesPage, [field]: e.target.value } }))} />
+                        ) : (
+                          <input className="form-control" placeholder={placeholder} value={siteForm.servicesPage?.[field] || ""} onChange={(e) => setSiteForm((p) => ({ ...p, servicesPage: { ...p.servicesPage, [field]: e.target.value } }))} />
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -768,22 +810,52 @@ export default function AdminDashboard() {
                   <div className="fw-bold mb-3">About Page</div>
                   <div className="row g-2">
                     <div className="col-12">
-                      <input className="form-control" placeholder="About title" value={siteForm.about?.title || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, title: e.target.value } }))} />
+                      <label className="form-label">About page title / hero headline</label>
+                      <input className="form-control" placeholder="Making Home Services Easier to Find and Book" value={siteForm.about?.title || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, title: e.target.value } }))} />
                     </div>
                     <div className="col-12">
-                      <textarea className="form-control" rows="4" placeholder="About description" value={siteForm.about?.description || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, description: e.target.value } }))} />
+                      <label className="form-label">Hero description</label>
+                      <textarea className="form-control" rows="3" placeholder="MistriChai is a home-service booking platform..." value={siteForm.about?.description || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, description: e.target.value } }))} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label">Hero secondary text</label>
+                      <textarea className="form-control" rows="2" placeholder="Whether you need help with a repair, maintenance..." value={siteForm.about?.heroSubtitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, heroSubtitle: e.target.value } }))} />
                     </div>
                     <div className="col-12 col-md-6">
-                      <input className="form-control" placeholder="Mission title" value={siteForm.about?.missionTitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, missionTitle: e.target.value } }))} />
+                      <label className="form-label" htmlFor="about-hero-image">About hero image</label>
+                      <input id="about-hero-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setAboutImageFiles((previous) => ({ ...previous, hero: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">Used in the top About page visual.</div>
+                      {(aboutImageFiles.hero || siteForm.about?.heroImageUrl) && <img className="site-hero-image-preview mt-3" src={aboutImageFiles.hero ? URL.createObjectURL(aboutImageFiles.hero) : siteForm.about.heroImageUrl.startsWith("http") ? siteForm.about.heroImageUrl : `${API_BASE}${siteForm.about.heroImageUrl}`} alt="About hero preview" />}
                     </div>
                     <div className="col-12 col-md-6">
-                      <input className="form-control" placeholder="Vision title" value={siteForm.about?.visionTitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, visionTitle: e.target.value } }))} />
+                      <label className="form-label" htmlFor="about-story-image">About story image</label>
+                      <input id="about-story-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setAboutImageFiles((previous) => ({ ...previous, story: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">Used in the Our Story section.</div>
+                      {(aboutImageFiles.story || siteForm.about?.storyImageUrl) && <img className="site-hero-image-preview mt-3" src={aboutImageFiles.story ? URL.createObjectURL(aboutImageFiles.story) : siteForm.about.storyImageUrl.startsWith("http") ? siteForm.about.storyImageUrl : `${API_BASE}${siteForm.about.storyImageUrl}`} alt="About story preview" />}
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Story title</label>
+                      <input className="form-control" placeholder="Finding reliable home-service help should be simpler." value={siteForm.about?.storyTitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, storyTitle: e.target.value } }))} />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Story text</label>
+                      <textarea className="form-control" rows="3" placeholder="When something needs repairing or maintaining at home..." value={siteForm.about?.storyText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, storyText: e.target.value } }))} />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Mission title</label>
+                      <input className="form-control" placeholder="Mission" value={siteForm.about?.missionTitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, missionTitle: e.target.value } }))} />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label">Vision title</label>
+                      <input className="form-control" placeholder="Vision" value={siteForm.about?.visionTitle || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, visionTitle: e.target.value } }))} />
                     </div>
                     <div className="col-12">
-                      <textarea className="form-control" rows="2" placeholder="Mission text" value={siteForm.about?.missionText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, missionText: e.target.value } }))} />
+                      <label className="form-label">Mission text</label>
+                      <textarea className="form-control" rows="2" placeholder="Make everyday home-service booking simple..." value={siteForm.about?.missionText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, missionText: e.target.value } }))} />
                     </div>
                     <div className="col-12">
-                      <textarea className="form-control" rows="2" placeholder="Vision text" value={siteForm.about?.visionText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, visionText: e.target.value } }))} />
+                      <label className="form-label">Vision text</label>
+                      <textarea className="form-control" rows="2" placeholder="Building a better way to access everyday services..." value={siteForm.about?.visionText || ""} onChange={(e) => setSiteForm((p) => ({ ...p, about: { ...p.about, visionText: e.target.value } }))} />
                     </div>
                   </div>
                 </div>
@@ -1413,7 +1485,7 @@ export default function AdminDashboard() {
         </div>
       </div>
       {selectedBooking && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setSelectedBooking(null)}><div className="payout-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between mb-3"><div><h5 className="mb-1">Booking Details</h5><div className="small-muted">{selectedBooking.booking_code}</div></div><button className="btn-close" aria-label="Close" onClick={() => setSelectedBooking(null)} /></div><div className="dashboard-detail-grid">{[["Customer", selectedBooking.customer_name],["Mobile", selectedBooking.customer_mobile],["Service", serviceLabelMap[selectedBooking.category] || selectedBooking.category],["Status", bookingStatusLabel(selectedBooking.status)],["Requested Partner", selectedBooking.requested_partner_first_name ? `${selectedBooking.requested_partner_first_name} ${selectedBooking.requested_partner_last_name}` : "None"],["Assigned Partner", selectedBooking.assigned_partner_first_name ? `${selectedBooking.assigned_partner_first_name} ${selectedBooking.assigned_partner_last_name}` : "Not assigned"],["Booking Fee", `৳${Number(selectedBooking.booking_fee || 0).toFixed(0)}`],["TrxID", selectedBooking.bkash_trx_id || "Not submitted"],["District / Thana", `${selectedBooking.district || "-"} / ${selectedBooking.thana || "-"}`],["Address", selectedBooking.service_address || "-"]].map(([label,value]) => <div className="dashboard-detail-item" key={label}><span>{label}</span><b>{value}</b></div>)}</div></div></div>}
-      {showServiceModal && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setShowServiceModal(false)}><div className="payout-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">{editingServiceKey ? "Edit Service" : "Add New Service"}</h5><div className="small-muted">Used across the website.</div></div><button className="btn-close" aria-label="Close" onClick={() => setShowServiceModal(false)} /></div><div className="row g-3"><div className="col-12"><label className="form-label">Service Key</label><input className="form-control" placeholder="e.g. CARPENTRY" value={serviceDraft.key} disabled={Boolean(editingServiceKey)} onChange={(e) => setServiceDraft((p) => ({...p,key:e.target.value}))} /></div><div className="col-12"><label className="form-label">Service Title</label><input className="form-control" value={serviceDraft.title} onChange={(e) => setServiceDraft((p) => ({...p,title:e.target.value}))} /></div><div className="col-12"><label className="form-label">Description</label><textarea className="form-control" rows="4" value={serviceDraft.desc} onChange={(e) => setServiceDraft((p) => ({...p,desc:e.target.value}))} /></div><div className="col-12"><label className="form-label">Service Card Image</label><input type="file" className="form-control" accept="image/*" onChange={(e) => setServiceDraft((p) => ({...p,imageFile:e.target.files?.[0] || null,removeImage:false}))} /></div><div className="col-12 d-flex justify-content-end gap-2"><button type="button" className="btn btn-light" onClick={() => setShowServiceModal(false)}>Cancel</button><button className="btn eco-btn" onClick={submitService}>{editingServiceKey ? "Update Service" : "Add Service"}</button></div></div></div></div>}
+      {showServiceModal && <div className="payout-modal-backdrop" role="presentation" onMouseDown={() => setShowServiceModal(false)}><div className="payout-modal service-edit-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="d-flex justify-content-between align-items-start mb-3"><div><h5 className="mb-1">{editingServiceKey ? "Edit Service" : "Add New Service"}</h5><div className="small-muted">Update the service card shown on the public Services page and booking flow.</div></div><button className="btn-close" aria-label="Close" onClick={() => setShowServiceModal(false)} /></div><div className="row g-3"><div className="col-12 col-md-5"><label className="form-label">Service Key</label><input className="form-control" placeholder="e.g. PLUMBING" value={serviceDraft.key} disabled={Boolean(editingServiceKey)} onChange={(e) => setServiceDraft((p) => ({...p,key:e.target.value}))} /><div className="small-muted mt-1">Use uppercase words with underscores. The key cannot change after creation.</div></div><div className="col-12 col-md-7"><label className="form-label">Service Title</label><input className="form-control" placeholder="Water Line" value={serviceDraft.title} onChange={(e) => setServiceDraft((p) => ({...p,title:e.target.value}))} /></div><div className="col-12"><label className="form-label">Short Description</label><textarea className="form-control" rows="4" placeholder="Plumbing, leak fixing, line repair and bathroom work." value={serviceDraft.desc} onChange={(e) => setServiceDraft((p) => ({...p,desc:e.target.value}))} /></div><div className="col-12 col-md-7"><label className="form-label">Service Card Image</label><input type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setServiceDraft((p) => ({...p,imageFile:e.target.files?.[0] || null,removeImage:false}))} /><div className="small-muted mt-1">Upload a realistic service image. JPG, PNG, WebP, HEIC or AVIF, max 5MB.</div>{editingServiceKey && serviceDraft.imageUrl && !serviceDraft.removeImage && <button type="button" className="btn btn-outline-danger btn-sm mt-2" onClick={() => setServiceDraft((p) => ({ ...p, removeImage: true, imageFile: null }))}>Remove Current Image</button>}{editingServiceKey && serviceDraft.removeImage && <button type="button" className="btn eco-btn-outline btn-sm mt-2" onClick={() => setServiceDraft((p) => ({ ...p, removeImage: false }))}>Keep Current Image</button>}</div><div className="col-12 col-md-5"><div className="service-image-admin-preview">{serviceDraft.imageFile ? <img src={URL.createObjectURL(serviceDraft.imageFile)} alt="New service preview" /> : serviceDraft.imageUrl && !serviceDraft.removeImage ? <img src={resolveImageSrc(serviceDraft.imageUrl)} alt="Current service preview" /> : <span>No image selected</span>}</div></div><div className="col-12"><label className="form-check"><input className="form-check-input" type="checkbox" checked={serviceDraft.active !== false} onChange={(e) => setServiceDraft((p) => ({ ...p, active: e.target.checked }))} /><span className="form-check-label">Active on public website</span></label></div><div className="col-12 d-flex justify-content-end gap-2"><button type="button" className="btn btn-light" onClick={() => setShowServiceModal(false)}>Cancel</button><button className="btn eco-btn" onClick={submitService}>{editingServiceKey ? "Update Service" : "Add Service"}</button></div></div></div></div>}
     </div>
   );
 }

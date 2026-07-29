@@ -43,6 +43,7 @@ const values = [
 ];
 
 export default function About() {
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [content, setContent] = useState(null);
 
   useEffect(() => {
@@ -64,6 +65,13 @@ export default function About() {
   const introText =
     content?.description ||
     "MistriChai is a home-service booking platform designed to connect customers with approved service professionals through a simple, organized, and convenient booking experience.";
+  const heroTitle = content?.title || "Making Home Services Easier to Find and Book";
+  const resolveContentImage = (url, fallback) => {
+    const value = String(url || "").trim();
+    if (!value) return fallback;
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    return `${API_BASE}${value.startsWith("/") ? "" : "/"}${value}`;
+  };
 
   return (
     <main className="about-page">
@@ -72,11 +80,11 @@ export default function About() {
           <div className="about-copy-block about-reveal">
             <span className="about-label about-label-purple">About MistriChai</span>
             <h1>
-              Making Home Services <span>Easier to Find and Book</span>
+              {heroTitle === "Making Home Services Easier to Find and Book" ? <>Making Home Services <span>Easier to Find and Book</span></> : heroTitle}
             </h1>
             <p className="about-lead">{introText}</p>
             <p>
-              Whether you need help with a repair, maintenance, or another available home service, MistriChai makes it easier to find the right professional and manage your service request in one place.
+              {content?.heroSubtitle || "Whether you need help with a repair, maintenance, or another available home service, MistriChai makes it easier to find the right professional and manage your service request in one place."}
             </p>
             <div className="about-actions">
               <Link className="about-btn about-btn-primary" to="/services">Book a Service</Link>
@@ -85,7 +93,7 @@ export default function About() {
           </div>
 
           <div className="about-hero-visual about-reveal">
-            <img src={heroImage} alt="A MistriChai service professional ready to help inside a home" />
+            <img src={resolveContentImage(content?.heroImageUrl, heroImage)} alt="A MistriChai service professional ready to help inside a home" />
             <div className="about-float about-float-one">Approved Professional</div>
             <div className="about-float about-float-two">Easy Booking</div>
             <div className="about-float about-float-three">Customer Support</div>
@@ -96,12 +104,12 @@ export default function About() {
       <section className="about-section">
         <div className="container about-split">
           <div className="about-image-card about-reveal">
-            <img src={storyImage} alt="Home service support through an organized booking platform" />
+            <img src={resolveContentImage(content?.storyImageUrl, storyImage)} alt="Home service support through an organized booking platform" />
           </div>
           <div className="about-copy-block about-reveal">
             <span className="about-label">Our Story</span>
-            <h2>Finding reliable home-service help should be simpler.</h2>
-            <p>When something needs repairing or maintaining at home, finding the right person for the job can be difficult. Customers may need to search through personal contacts, social media, or different service providers without having one organized place to manage the process.</p>
+            <h2>{content?.storyTitle || "Finding reliable home-service help should be simpler."}</h2>
+            <p>{content?.storyText || "When something needs repairing or maintaining at home, finding the right person for the job can be difficult. Customers may need to search through personal contacts, social media, or different service providers without having one organized place to manage the process."}</p>
             <p>MistriChai was created to make that experience simpler.</p>
             <p>Our platform brings customers and service professionals together through a structured system where customers can explore available services, find approved professionals, create bookings, follow their service requests, communicate when needed, and provide feedback after completed work.</p>
             <div className="about-highlight">One platform. A simpler way to find the help your home needs.</div>

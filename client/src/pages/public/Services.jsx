@@ -47,6 +47,7 @@ export default function Services() {
   const { user } = useContext(AuthContext);
   const [services, setServices] = useState(useLocalImages ? DEFAULT_SERVICE_OPTIONS : []);
   const [contentState, setContentState] = useState(useLocalImages ? "ready" : "loading");
+  const [pageContent, setPageContent] = useState({});
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState("");
   const [openFaq, setOpenFaq] = useState(0);
@@ -59,11 +60,13 @@ export default function Services() {
           return;
         }
         setServices(normalizeServiceOptions(res?.data?.services));
+        setPageContent(res?.data?.servicesPage || {});
         setContentState("ready");
       })
       .catch(() => {
         if (active) {
           setServices(useLocalImages ? DEFAULT_SERVICE_OPTIONS : []);
+          setPageContent({});
           setContentState(useLocalImages ? "ready" : "error");
         }
       });
@@ -104,6 +107,24 @@ export default function Services() {
     document.getElementById("all-services")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const copy = {
+    heroLabel: pageContent.heroLabel || "HOME SERVICES",
+    heroTitle: pageContent.heroTitle || "Professional Help for Your Home, Made Simple.",
+    heroDescription: pageContent.heroDescription || "Explore available MistriChai services and connect with approved professionals for your home repair, maintenance, and service needs.",
+    heroSecondaryText: pageContent.heroSecondaryText || "Choose what you need, find a professional, select your preferred schedule, and manage your booking through MistriChai.",
+    searchTitle: pageContent.searchTitle || "What do you need help with?",
+    searchHint: pageContent.searchHint || "Browse by category or explore all available services below.",
+    servicesLabel: pageContent.servicesLabel || "OUR SERVICES",
+    servicesTitle: pageContent.servicesTitle || "Everything Your Home Needs, All in One Place.",
+    servicesDescription: pageContent.servicesDescription || "Browse our available service categories and choose the help you need.",
+    supportLabel: pageContent.supportLabel || "NEED SOMETHING ELSE?",
+    supportTitle: pageContent.supportTitle || "Can't find the service you're looking for?",
+    supportText: pageContent.supportText || "Tell our support team what you need. We'll help you understand the available options on MistriChai.",
+    finalLabel: pageContent.finalLabel || "GET STARTED",
+    finalTitle: pageContent.finalTitle || "Your Home Needs Help. MistriChai Makes Finding It Easier.",
+    finalText: pageContent.finalText || "Choose a service, connect with an approved professional, and start your booking today."
+  };
+
   const resolveImageSrc = (item) => {
     if (useLocalImages) return IMAGES[item?.key] || heroImg;
     const uploaded = String(item?.imageUrl || "").trim();
@@ -124,10 +145,10 @@ export default function Services() {
       <section className="services-hero">
         <div className="container services-hero-grid">
           <div className="services-hero-copy services-reveal">
-            <span className="services-kicker">Home Services</span>
-            <h1>Professional Help for Your Home, Made Simple.</h1>
-            <p className="services-lead">Explore available MistriChai services and connect with approved professionals for your home repair, maintenance, and service needs.</p>
-            <p>Choose what you need, find a professional, select your preferred schedule, and manage your booking through MistriChai.</p>
+            <span className="services-kicker">{copy.heroLabel}</span>
+            <h1>{copy.heroTitle}</h1>
+            <p className="services-lead">{copy.heroDescription}</p>
+            <p>{copy.heroSecondaryText}</p>
             <div className="services-actions">
               <button className="services-btn services-btn-primary" type="button" onClick={exploreServices}>Explore Services</button>
               <button className="services-btn services-btn-outline" type="button" onClick={() => document.getElementById("booking-process")?.scrollIntoView({ behavior: "smooth", block: "start" })}>How It Works</button>
@@ -150,8 +171,8 @@ export default function Services() {
         <div className="container">
           <div className="services-search-panel">
             <div>
-              <h2>What do you need help with?</h2>
-              <p>Browse by category or explore all available services below.</p>
+              <h2>{copy.searchTitle}</h2>
+              <p>{copy.searchHint}</p>
             </div>
             <div className="services-search-control">
               <input
@@ -170,9 +191,9 @@ export default function Services() {
       <section className="services-section services-main-section" id="all-services">
         <div className="container">
           <div className="services-section-head">
-            <span className="services-kicker">Our Services</span>
-            <h2>Everything Your Home Needs, All in One Place.</h2>
-            <p>Browse our available service categories and choose the help you need.</p>
+            <span className="services-kicker">{copy.servicesLabel}</span>
+            <h2>{copy.servicesTitle}</h2>
+            <p>{copy.servicesDescription}</p>
           </div>
 
           <div className="services-count-row">
@@ -217,9 +238,9 @@ export default function Services() {
       <section className="services-section services-support-section">
         <div className="container services-split">
           <div>
-            <span className="services-kicker">Need Something Else?</span>
-            <h2>Can&apos;t find the service you&apos;re looking for?</h2>
-            <p>Tell our support team what you need. We&apos;ll help you understand the available options on MistriChai.</p>
+            <span className="services-kicker">{copy.supportLabel}</span>
+            <h2>{copy.supportTitle}</h2>
+            <p>{copy.supportText}</p>
             <div className="services-actions">
               <button className="services-btn services-btn-primary" type="button" onClick={() => navigate("/support")}>Contact Support</button>
               <button className="services-btn services-btn-outline" type="button" onClick={findProfessionals}>Browse Professionals</button>
@@ -341,9 +362,9 @@ export default function Services() {
 
       <section className="services-final-cta">
         <div className="container">
-          <span>Get Started</span>
-          <h2>Your Home Needs Help. MistriChai Makes Finding It Easier.</h2>
-          <p>Choose a service, connect with an approved professional, and start your booking today.</p>
+          <span>{copy.finalLabel}</span>
+          <h2>{copy.finalTitle}</h2>
+          <p>{copy.finalText}</p>
           <div className="services-actions services-actions-center">
             <button className="services-btn services-btn-light" type="button" onClick={exploreServices}>Book a Service</button>
             <button className="services-btn services-btn-dark-outline" type="button" onClick={findProfessionals}>Find Professionals</button>

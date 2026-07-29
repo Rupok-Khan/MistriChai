@@ -11,6 +11,25 @@ const DEFAULT_SERVICE_OPTIONS = [
 const DEFAULT_SITE_SETTINGS = {
   preferences: { language: "ENGLISH" },
   services: DEFAULT_SERVICE_OPTIONS,
+  servicesPage: {
+    heroLabel: "HOME SERVICES",
+    heroTitle: "Professional Help for Your Home, Made Simple.",
+    heroDescription:
+      "Explore available MistriChai services and connect with approved professionals for your home repair, maintenance, and service needs.",
+    heroSecondaryText:
+      "Choose what you need, find a professional, select your preferred schedule, and manage your booking through MistriChai.",
+    searchTitle: "What do you need help with?",
+    searchHint: "Browse by category or explore all available services below.",
+    servicesLabel: "OUR SERVICES",
+    servicesTitle: "Everything Your Home Needs, All in One Place.",
+    servicesDescription: "Browse our available service categories and choose the help you need.",
+    supportLabel: "NEED SOMETHING ELSE?",
+    supportTitle: "Can't find the service you're looking for?",
+    supportText: "Tell our support team what you need. We'll help you understand the available options on MistriChai.",
+    finalLabel: "GET STARTED",
+    finalTitle: "Your Home Needs Help. MistriChai Makes Finding It Easier.",
+    finalText: "Choose a service, connect with an approved professional, and start your booking today."
+  },
   loginPages: {
     customer: {
       title: "Trusted home services, one login away.",
@@ -104,6 +123,13 @@ const DEFAULT_SITE_SETTINGS = {
     title: "About MistriChai",
     description:
       "MistriChai connects customers with verified service professionals. Our goal is to make home-service booking simple, trustworthy, and transparent.",
+    heroSubtitle:
+      "Whether you need help with a repair, maintenance, or another available home service, MistriChai makes it easier to find the right professional and manage your service request in one place.",
+    storyTitle: "Finding reliable home-service help should be simpler.",
+    storyText:
+      "When something needs repairing or maintaining at home, finding the right person for the job can be difficult. MistriChai was created to make that experience simpler through one organized service platform.",
+    heroImageUrl: "",
+    storyImageUrl: "",
     missionTitle: "Mission",
     missionText: "Make local technician services safe, fast, and accessible for everyone.",
     visionTitle: "Vision",
