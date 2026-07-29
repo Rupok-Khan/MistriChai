@@ -7,6 +7,7 @@ const Partner = require("../models/partner.model");
 const SiteSettings = require("../models/siteSettings.model");
 const { mediaUrl } = require("../utils/mediaFile");
 const Subscription = require("../models/subscription.model");
+const Audit = require("../models/audit.model");
 
 const SERVICE_CHARGE = 49;
 const BKASH_NUMBER = "01984646174";
@@ -90,7 +91,7 @@ exports.createBooking = async (req, res) => {
       return res.status(409).json({ message: "This bKash transaction ID has already been submitted" });
     }
 
-    const bookingId = await Booking.createBooking({
+    const bookingData = {
       customer_user_id: req.user.id,
       requested_partner_user_id,
       category,
@@ -106,21 +107,23 @@ exports.createBooking = async (req, res) => {
       estimated_cash_amount,
       customer_note,
       initial_status: subscription ? "PENDING_ASSIGNMENT" : "PAYMENT_PENDING"
-    });
+    };
+    const idempotencyKey = String(req.headers["idempotency-key"] || "").trim().slice(0, 120);
 
-    if (!subscription) await Booking.createPayment({
-      booking_id: bookingId,
-      payer_user_id: req.user.id,
-      receiver_user_id: null,
-      transaction_type: "BOOKING_FEE",
-      payment_method: "MOBILE_BANKING",
-      transaction_reference: transactionReference,
-      amount: SERVICE_CHARGE,
-      status: "PENDING",
-      note: `Customer submitted manual bKash payment to ${BKASH_NUMBER}; awaiting admin approval`
-    });
+    const bookingId = subscription
+      ? await Booking.createBookingIdempotent(bookingData, idempotencyKey)
+      : await Booking.createBookingWithPayment(bookingData, {
+          payer_user_id: req.user.id,
+          transaction_type: "BOOKING_FEE",
+          payment_method: "MOBILE_BANKING",
+          transaction_reference: transactionReference,
+          amount: SERVICE_CHARGE,
+          status: "PENDING",
+          note: `Customer submitted manual bKash payment to ${BKASH_NUMBER}; awaiting admin approval`
+        }, idempotencyKey);
 
     const data = await Booking.getBookingById(bookingId);
+    await Audit.record({ actorUserId: req.user.id, actorRole: req.user.role, action: "CREATE_BOOKING", entityType: "BOOKING", entityId: bookingId, afterData: { booking_code: data.booking_code, status: data.status }, requestId: req.requestId, ipAddress: req.ip });
     return res.status(201).json({ message: subscription ? "Order submitted with no booking fee under your active subscription." : "Payment submitted. Your job is waiting for admin approval.", data });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY") {

@@ -56,6 +56,7 @@ export default function PartnerList() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [bookingState, setBookingState] = useState(DEFAULT_BOOKING_STATE);
+  const [bookingStep, setBookingStep] = useState(1);
   const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
@@ -170,6 +171,7 @@ export default function PartnerList() {
       ward_no: partner.ward_no || "",
       city_corp_or_union: partner.city_corp_or_union || ""
     }));
+    setBookingStep(2);
   };
 
   const clearSelectedPartner = () => {
@@ -181,6 +183,7 @@ export default function PartnerList() {
       ward_no: "",
       city_corp_or_union: ""
     }));
+    setBookingStep(1);
   };
 
   const submitBooking = async (e) => {
@@ -336,7 +339,11 @@ export default function PartnerList() {
                 Selected partner: <b>{selectedPartner.name}</b>
               </div>
 
+              <div className="booking-stepper mb-4" aria-label="Booking progress">
+                {["Details", "Schedule", "Confirm"].map((label, index) => <div key={label} className={`booking-step ${bookingStep === index + 2 ? "active" : ""} ${bookingStep > index + 2 ? "done" : ""}`}><span>{index + 1}</span>{label}</div>)}
+              </div>
               <form className="row g-3" onSubmit={submitBooking}>
+                {bookingStep === 2 && <>
                 <div className="col-12">
                   <label className="form-label">Problem Details</label>
                   <textarea className="form-control" rows="3" value={bookingState.problem_summary} onChange={(e) => onBookingChange("problem_summary", e.target.value)} required />
@@ -345,6 +352,9 @@ export default function PartnerList() {
                   <label className="form-label">Service Address</label>
                   <textarea className="form-control" rows="2" value={bookingState.service_address} onChange={(e) => onBookingChange("service_address", e.target.value)} required />
                 </div>
+                <div className="col-12 d-flex justify-content-end"><button type="button" className="btn eco-btn" disabled={!bookingState.problem_summary.trim() || !bookingState.service_address.trim()} onClick={() => setBookingStep(3)}>Continue to Schedule</button></div>
+                </>}
+                {bookingStep === 3 && <>
                 <div className="col-12 col-md-6">
                   <label className="form-label">Preferred Date</label>
                   <input type="date" className="form-control" value={bookingState.preferred_date} onChange={(e) => onBookingChange("preferred_date", e.target.value)} />
@@ -366,6 +376,9 @@ export default function PartnerList() {
                     {subscription ? <>Your subscription is active until <b>{new Date(subscription.expires_at).toLocaleDateString()}</b>. This order has no booking fee.</> : <>Send <b>৳{SERVICE_CHARGE}</b> manually to the admin bKash number <b>{BKASH_NUMBER}</b>, then enter the transaction ID below. Admin will verify the payment before assigning the job.</>}
                   </div>
                 </div>
+                <div className="col-12 d-flex justify-content-between"><button type="button" className="btn eco-btn-outline" onClick={() => setBookingStep(2)}>Back</button><button type="button" className="btn eco-btn" onClick={() => setBookingStep(4)}>Review Order</button></div>
+                </>}
+                {bookingStep === 4 && <>
                 <div className="col-12">
                   <label className="form-label">bKash Transaction ID</label>
                   <input
@@ -385,13 +398,12 @@ export default function PartnerList() {
                   <textarea className="form-control" rows="2" value={bookingState.customer_note} onChange={(e) => onBookingChange("customer_note", e.target.value)} />
                 </div>
                 <div className="col-12 d-flex gap-2">
-                  <button type="button" className="btn eco-btn-outline w-50" onClick={clearSelectedPartner}>
-                    Change Partner
-                  </button>
+                  <button type="button" className="btn eco-btn-outline w-50" onClick={() => setBookingStep(3)}>Back</button>
                   <button className="btn eco-btn w-50">
                     Submit Payment & Order
                   </button>
                 </div>
+                </>}
               </form>
             </div>
           </div>

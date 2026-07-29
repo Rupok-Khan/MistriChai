@@ -17,6 +17,7 @@ const Team = lazy(() => import("./pages/public/Team"));
 const Support = lazy(() => import("./pages/public/Support"));
 const Privacy = lazy(() => import("./pages/public/Privacy"));
 const Terms = lazy(() => import("./pages/public/Terms"));
+const Pricing = lazy(() => import("./pages/public/Pricing"));
 const RedirectDashboard = lazy(() => import("./pages/RedirectDashboard"));
 const PartnerList = lazy(() => import("./pages/customer/PartnerList.jsx"));
 const CustomerLogin = lazy(() => import("./pages/customer/CustomerLogin"));
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/support" element={<Support />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/auth" element={<AuthLanding />} />
 
         <Route path="/auth/customer/login" element={<CustomerLogin />} />

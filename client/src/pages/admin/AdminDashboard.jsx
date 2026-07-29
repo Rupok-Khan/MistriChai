@@ -567,6 +567,7 @@ export default function AdminDashboard() {
               ["Pending Partners", dashboard.summary?.pending_partners || 0],
               ["Total Bookings", dashboard.summary?.total_bookings || 0],
               ["Booking Fee Revenue", `৳${Number(dashboard.summary?.booking_fee_revenue || 0).toFixed(0)}`],
+              ["4% Commission Revenue", `৳${Number(dashboard.summary?.commission_revenue || 0).toFixed(2)}`],
               ["Pending Cancel / Reject", dashboard.summary?.pending_change_requests || 0],
               ["Active Bookings", dashboard.summary?.active_bookings || 0],
               ["Refund Cases", dashboard.summary?.refund_cases || 0],

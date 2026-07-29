@@ -1,6 +1,6 @@
 const pool = require("../config/db");
 
-const PLANS = { SIX_MONTHS: { months: 6, amount: 99 }, ONE_YEAR: { months: 12, amount: 199 } };
+const PLANS = { ONE_MONTH: { months: 1, amount: 30 }, SIX_MONTHS: { months: 6, amount: 149 }, ONE_YEAR: { months: 12, amount: 250 } };
 
 async function getActiveForCustomer(customerUserId) {
   await pool.query("UPDATE customer_subscriptions SET status='EXPIRED' WHERE customer_user_id=? AND status='ACTIVE' AND expires_at <= NOW()", [customerUserId]);
@@ -22,4 +22,8 @@ async function revenueForAdmin() {
   const [rows] = await pool.query("SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS count, SUM(status='ACTIVE' AND expires_at > NOW()) AS active_count FROM customer_subscriptions");
   return rows[0];
 }
-module.exports = { PLANS, getActiveForCustomer, create, referenceExists, listForAdmin, revenueForAdmin };
+async function commissionRevenueForAdmin() {
+  const [rows] = await pool.query("SELECT COALESCE(SUM(commission_amount),0) AS total, COUNT(*) AS count FROM platform_commissions WHERE status='EARNED'");
+  return rows[0] || { total: 0, count: 0 };
+}
+module.exports = { PLANS, getActiveForCustomer, create, referenceExists, listForAdmin, revenueForAdmin, commissionRevenueForAdmin };

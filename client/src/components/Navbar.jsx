@@ -57,6 +57,7 @@ export default function Navbar() {
                   {user.role === "CUSTOMER" ? "Customer" : "Partner"}: <b>{user.name}</b>
                 </li>
                 {user.role === "CUSTOMER" && <li className="nav-item"><Link className="btn eco-btn-outline me-2" to="/customer/dashboard?section=subscription">Subscription</Link></li>}
+                {!user && <li className="nav-item"><Link className="nav-link" to="/pricing">Pricing</Link></li>}
                 <li className="nav-item">
                   <Link className="btn eco-btn-outline me-2" to={user.role === "CUSTOMER" ? "/customer/dashboard" : "/partner/dashboard"}>
                     Dashboard

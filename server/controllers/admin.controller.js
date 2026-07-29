@@ -9,6 +9,7 @@ const SiteSettings = require("../models/siteSettings.model");
 const BookingChangeRequest = require("../models/bookingChangeRequest.model");
 const { mediaUrl, deleteMediaUrl } = require("../utils/mediaFile");
 const Subscription = require("../models/subscription.model");
+const Audit = require("../models/audit.model");
 
 function toServiceImageUrl(file) {
   return mediaUrl(file, "service") || "";
@@ -52,7 +53,7 @@ exports.login = async (req, res) => {
 
 exports.dashboard = async (req, res) => {
   try {
-    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings, changeRequests, bookingFeeSummary, bookingFees, workPayments, subscriptions, subscriptionRevenue] = await Promise.all([
+    const [pendingPartners, approvedPartners, bookings, withdrawals, contacts, customers, allPartners, siteSettings, changeRequests, bookingFeeSummary, bookingFees, workPayments, subscriptions, subscriptionRevenue, commissionRevenue] = await Promise.all([
       Partner.adminListPartnersByStatus("PENDING"),
       Partner.adminListPartnersByStatus("APPROVED"),
       Booking.listBookingsForAdmin(),
@@ -66,7 +67,8 @@ exports.dashboard = async (req, res) => {
       Booking.listBookingFeesForAdmin(),
       Booking.listWorkPaymentsForAdmin(),
       Subscription.listForAdmin(),
-      Subscription.revenueForAdmin()
+      Subscription.revenueForAdmin(),
+      Subscription.commissionRevenueForAdmin()
     ]);
 
     const summary = {
@@ -83,7 +85,8 @@ exports.dashboard = async (req, res) => {
       total_customers: customers.length,
       total_partners: allPartners.length
       ,subscription_revenue: subscriptionRevenue.total,
-      active_subscriptions: subscriptionRevenue.active_count
+      active_subscriptions: subscriptionRevenue.active_count,
+      commission_revenue: commissionRevenue.total
     };
 
     return res.json({
@@ -102,6 +105,7 @@ exports.dashboard = async (req, res) => {
         workPayments,
         subscriptions,
         subscriptionRevenue
+        ,commissionRevenue
       }
     });
   } catch (err) {
@@ -193,6 +197,7 @@ exports.assignBooking = async (req, res) => {
       adminNote: req.body.admin_note
     });
     await Partner.setBusyOnAssignment(partnerUserId);
+    await Audit.record({ actorRole: "ADMIN", action: "ASSIGN_BOOKING", entityType: "BOOKING", entityId: booking.id, beforeData: { status: booking.status, assigned_partner_user_id: booking.assigned_partner_user_id }, afterData: { status: "ASSIGNED", assigned_partner_user_id: partnerUserId }, requestId: req.requestId, ipAddress: req.ip });
 
     return res.json({ message: "Partner assigned to booking" });
   } catch (err) {
@@ -214,6 +219,7 @@ exports.approveBookingPayment = async (req, res) => {
     if (!approved) {
       return res.status(409).json({ message: "Payment was already processed" });
     }
+    await Audit.record({ actorRole: "ADMIN", action: "APPROVE_BOOKING_PAYMENT", entityType: "BOOKING", entityId: booking.id, beforeData: { status: booking.status, payment_status: booking.payment_status }, afterData: { payment_status: "PAID" }, requestId: req.requestId, ipAddress: req.ip });
     return res.json({ message: "bKash payment approved. The job can now be assigned." });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });

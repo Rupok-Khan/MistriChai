@@ -1,0 +1,181 @@
+MistriChai / OnDemand Project
+সম্পূর্ণ বাংলা টেকনিক্যাল ব্যাখ্যা, ফিচার, কোড-লজিক, ডেটাবেস ডিজাইন ও Viva প্রশ্ন
+==========================================================================
+
+নোট
+---
+এই নথি তৈরি করা হয়েছে বর্তমান source code দেখে। client/server-এর নিজের লেখা source file-গুলো এখানে কভার করা হয়েছে। client/dist ও node_modules-এর ফাইল build output/third-party dependency; এগুলোর প্রতিটি generated/library line ব্যাখ্যা করা প্রজেক্ট বোঝার জন্য প্রাসঙ্গিক নয়। package-lock ফাইল dependency-এর exact version lock করে, business logic বহন করে না।
+
+১. প্রজেক্টের উদ্দেশ্য
+-----------------------
+MistriChai একটি home-service booking platform। Customer প্রয়োজনীয় technician/service খুঁজে booking করে। Partner নিজের পরিচয়, NID, category ও কাজের সময় দিয়ে নিবন্ধন করে; Admin যাচাই করে অনুমোদন দিলে সে কাজ পায়। Admin booking assign, payment, refund, user, content, contact এবং partner wallet পরিচালনা করে।
+
+প্রধান actor:
+* CUSTOMER: account, subscription, verified partner search, booking, payment reference, chat, cancellation, review।
+* PARTNER: NID verification, profile, availability, assigned order, accept/reject, work payment, chat, wallet ও withdrawal।
+* ADMIN: login, dashboard, partner approve/reject, booking/payment/assignment/refund, customer/partner management, contact reply, service ও website content management।
+
+২. System architecture ও data flow
+------------------------------------
+Browser (React + Vite) -> REST API (JSON/FormData + JWT) -> Express route -> middleware -> controller -> model -> MySQL। ছবি Multer দিয়ে গ্রহণ হয়ে Cloudinary অথবা local uploads-এ যায়। Frontend Vercel এবং backend Render-এ deploy করা যায়।
+
+একটি সাধারণ request-এর ধাপ: React page form state নেয়; service function api wrapper-এ request পাঠায়; route endpoint middleware চালায়; auth middleware token যাচাই করে; role middleware অনুমতি পরীক্ষা করে; controller input ও business rule প্রয়োগ করে; model parameterized SQL চালায়; controller JSON response দেয়; page state refresh করে।
+
+৩. Root ও deployment files
+---------------------------
+README.md: প্রজেক্টের সংক্ষিপ্ত পরিচয় এবং deployment documentation-এর link।
+DEPLOYMENT.md: deployment সম্পর্কিত নির্দেশনা।
+HOW_TO_RUN_APPLICATION.txt: local-এ client/server চালানোর ধাপ।
+DEPLOY_VERCEL_RENDER_BANGLA.txt: Vercel frontend ও Render backend deploy-এর বাংলা নির্দেশনা।
+BANGLA_ARCHITECTURE_TECHNICAL_VIVA.txt: আগের architecture/viva note; legacy encoding-এর কারণে এই নতুন নথিই প্রধান reference।
+render.yaml: Render service-এর build/start configuration।
+.gitignore এবং client/.gitignore: secret, dependency, build output ও local file Git থেকে বাদ দেয়।
+server/.env.example এবং client/.env.example: প্রয়োজনীয় environment variable-এর template; আসল secret commit করা উচিত নয়।
+
+৪. Backend boot ও configuration
+-------------------------------
+server/server.js: dotenv load করা app import করে; syncSchema() দিয়ে database table initialize/synchronize করে; সফল হলে PORT-এ 0.0.0.0-এ listen করে; failure হলে error print করে process বন্ধ করে।
+server/app.js: Express app তৈরি করে। x-powered-by বন্ধ, proxy setting, security headers, production error response sanitization, CORS allow-list, JSON/urlencoded body parser, login/submission rate limiter, route mount এবং /api/health health-check দেয়। /uploads static directory-তে dotfile deny, cache header ও nosniff header আছে। Multer/CORS/unknown error-এর central handler status অনুযায়ী response দেয়।
+server/config/db.js: mysql2 pool তৈরি করে; pool ব্যবহার করলে connection reuse হয় এবং প্রতি query-তে নতুন connection খোলার overhead কমে।
+server/config/dbSsl.js: managed MySQL/production SSL connection option তৈরি করে।
+server/config/jwt.js: secret, issuer, audience, access expiry এবং refresh expiry ব্যবহার করে JWT sign/verify-এর কেন্দ্রীয় configuration।
+server/config/cloudinary.js: Cloudinary environment credential থাকলে remote image storage configuration দেয়।
+server/config/uploadPaths.js: upload root directory এবং media path নির্ধারণ করে।
+server/config/schemaSync.js: schema.sql পড়ে প্রয়োজনীয় table/database sync করার deployment helper; init-এর সময় missing table তৈরি করে।
+
+৫. Backend middleware ও utility
+--------------------------------
+server/middleware/auth.middleware.js: Authorization Bearer token নেয়, JWT verify করে এবং payload-এর user id/role request-এ বসায়; token না থাকলে/ভুল হলে 401।
+server/middleware/adminAuth.middleware.js: admin token verify করে এবং role ADMIN না হলে 403; admin endpoint-এর gateway।
+server/middleware/role.middleware.js: requireRole('CUSTOMER','PARTNER')-এর মতো reusable permission checker; logged-in হলেও ভুল role হলে 403।
+server/middleware/security.middleware.js: security headers, request id এবং rate-limiting helper; brute-force ও unsafe response কমাতে ব্যবহৃত।
+server/utils/multer.js: multipart upload parse করে; field name, image/document MIME type ও সর্বোচ্চ 5MB size validate করে; invalid file reject করে।
+server/utils/mediaFile.js: local/Cloudinary file URL তৈরি, media path normalize এবং পুরনো file delete করার helper।
+
+৬. Backend routes ও endpoint-এর কাজ
+-----------------------------------
+server/routes/auth.routes.js: /refresh, /logout; customer signup/login; partner multipart signup/login। Signup-এ express-validator customer name/email/mobile/address/password validate করে।
+server/routes/customer.routes.js: auth + CUSTOMER role-এর dashboard/profile, subscription, verified partner list, booking create/list/detail, booking payment/status, cancellation/change request, chat এবং rating endpoint।
+server/routes/partner.routes.js: auth + PARTNER role-এর profile, availability, assigned booking/order, accept/reject, work payment amount/status, booking chat, payout method, wallet ও withdrawal endpoint।
+server/routes/partners.routes.js: public/authorized partner listing/filter endpoint; শুধু approved/available partner দেখানোর জন্য।
+server/routes/admin.routes.js: admin login; dashboard; pending/details/approve/reject partner; bookings list ও approve-payment/assign/refund; work payment approve; change request review; withdrawal list/pay; customer/partner CRUD; contact reply/delete; site-content এবং service CRUD। upload.fields দিয়ে hero/promo image, upload.single দিয়ে service card image নেয়।
+server/routes/contact.routes.js: logged-in customer/partner contact submit এবং own contact history।
+server/routes/site.routes.js: public site content/services পড়ার endpoint।
+
+৭. Controller layer—business logic
+------------------------------------
+server/controllers/auth.controller.js: signup-এ duplicate email/mobile পরীক্ষা, bcrypt hash, users insert, customer_profiles/partner_profiles insert এবং token/session response দেয়। Partner signup-এ ছবি, NID, working time/category সংরক্ষণ হয় এবং verification PENDING থাকে। Login-এ bcrypt.compare; partner code/mobile/email দিয়ে user খোঁজা; inactive বা rejected policy check; access/refresh token তৈরি।
+server/controllers/customer.controller.js: customer dashboard aggregate data, profile update, active subscription; plan (SIX_MONTHS/ONE_YEAR) ও unique transaction reference; approved partner filter; booking-এর customer ownership; payment reference; cancellation/change request; partner/customer chat; completed booking-এ 1-5 rating—এসব rule প্রয়োগ করে।
+server/controllers/partner.controller.js: partner নিজের profile/availability update করে; কেবল assigned/নিজের booking দেখতে পারে; accept করলে status IN_PROGRESS/প্রাসঙ্গিক flow; rejection হলে change request তৈরি; work payment propose/confirm; attachment chat; কাজ complete হলে wallet credit এবং withdrawal validation চালায়।
+server/controllers/admin.controller.js: admin-এর সবচেয়ে বড় orchestration layer। partner approve করলে code তৈরি/verification status বদলায়; reject করলে reason; booking assign করলে requested/assigned partner ও status; payment approve/refund status; cancellation/rejection review; work payment approve; wallet withdrawal pay; customer/partner update/delete; contact reply; site settings/service upload ও CRUD।
+server/controllers/contact.controller.js: authenticated sender-এর user id/role সহ message insert/list; input ও ownership নিশ্চিত করে।
+server/controllers/site.controller.js: public settings/services read এবং admin update-এর payload/file merge; malformed content normalize করে safe default রাখে।
+
+৮. Model layer—database access
+-------------------------------
+server/models/user.model.js: users query—findByEmail, findByMobile, findPartnerByCode, findById, createUser, updatePassword, admin customer/partner list ও role-limited delete। সব query `?` placeholder ব্যবহার করে SQL injection কমায়।
+server/models/customer.model.js: customer profile, dashboard data, booking relation ও customer-specific query।
+server/models/partner.model.js: partner profile, verification, category/location/availability query, assigned booking ও partner-specific update।
+server/models/booking.model.js: booking insert/read/update, status transition, assignment, messages ও change request সম্পর্কিত SQL।
+server/models/bookingChangeRequest.model.js: cancellation, partner change/rejection request insert, pending list, admin approve/reject।
+server/models/subscription.model.js: plan amount—SIX_MONTHS=6 মাস/99 এবং ONE_YEAR=12 মাস/199; expired active subscription update, create, reference duplicate check, admin revenue।
+server/models/wallet.model.js: wallet balance, transaction history, payout method, pending withdrawal, work credit ও admin payout। creditCompletedWork transaction শুরু করে duplicate credit lock/check, balance update ও ledger insert একসাথে commit করে। withdrawal-এ reserve 100 টাকা এবং minimum 300 টাকা rule আছে।
+server/models/contact.model.js: contact message ও reply CRUD।
+server/models/siteSettings.model.js: site_settings-এর JSON section read/write; default content merge/sanitize; service key uppercase normalize, duplicate key বাদ, inactive service soft-delete।
+
+৯. Database design (server/schema.sql)
+--------------------------------------
+users: central identity table। id PK, role ENUM, name/email/mobile unique identity, bcrypt password_hash, is_active।
+customer_profiles: user_id UNIQUE FK; customer address আলাদা profile table হওয়ায় identity ও domain data আলাদা।
+partner_profiles: user_id UNIQUE FK; partner_code, নাম, NID address/number/photos, district/thana/ward, category, working time, experience, social links, verification_status এবং availability_status। NID number unique।
+customer_subscriptions: customer, plan, amount, start/expiry, ACTIVE/EXPIRED/CANCELLED status ও unique transaction_reference।
+site_settings: section_key PK এবং LONGTEXT JSON; ফলে homepage/contact/about/services admin panel থেকে editable।
+service_bookings: booking_code unique, customer, requested/assigned partner FK, category/problem/location/date/time, fee/estimated cash, status state machine, notes/rating/timestamps। requested partner পরে বদলালেও assigned relation আলাদা থাকে।
+booking_messages: booking FK এবং sender/receiver FK; text অথবা attachment metadata। booking delete হলে message cascade delete।
+booking_change_requests: requester, request_type, reason/proof, admin review status/note/audit timestamp।
+payment_transactions: booking/payer/receiver nullable FK, BOOKING_FEE/SERVICE_CASH/REFUND/WITHDRAWAL, method, amount/status/reference।
+work_payments: একটি booking-এর জন্য UNIQUE final job payment; customer/partner, amount, bKash id ও proposal/approval status।
+partner_wallets: এক partner-এর এক wallet; current balance।
+partner_payout_methods: partner-এর এক payout method; bKash/Nagad/Rocket/Bank details।
+wallet_transactions: append-only ledger—CREDIT/DEBIT/WITHDRAW_REQUEST/WITHDRAW_PAID; booking ও payout snapshot রাখে।
+contact_messages এবং contact_message_replies: support message ও admin reply; parent message delete হলে reply cascade।
+
+Foreign key-তে customer/partner delete হলে profile/booking/payment-এর ক্ষেত্রে CASCADE বা SET NULL policy আছে। ENUM status ভুল value আটকায়; UNIQUE duplicate booking/mobile/reference আটকায়; DATETIME/audit field chronology দেয়।
+
+১০. মূল business flow
+----------------------
+Registration -> bcrypt password -> login JWT -> customer active subscription -> approved partner search -> booking PAYMENT_PENDING -> admin payment approve -> assignment -> partner accept/in-progress -> work amount/payment approval -> COMPLETED -> wallet credit -> customer rating।
+Customer cancellation, partner rejection বা partner change সরাসরি destructive update না করে booking_change_requests তৈরি করে; admin review-এর পর REFUND/CANCELLED/assignment পরিবর্তন হয়। এতে auditability থাকে।
+
+Authentication flow: login-এ password hash compare; server signed JWT দেয়; client token রাখে এবং Authorization header পাঠায়; middleware verify করে। Customer/partner refresh cookie দিয়ে access token renew করতে পারে। Admin token আলাদা storage key ব্যবহার করে। Logout-এ client token ও server session/cookie clear হয়।
+
+Payment flow: subscription payment এবং booking fee আলাদা concept; final work payment আলাদা work_payments; partner earning সরাসরি booking completion-এর পরে wallet CREDIT। withdrawal request pending থাকে; admin pay করলে reserve রেখে wallet debit এবং PAID ledger লেখা হয়।
+
+১১. Frontend entry, routing ও global state
+-------------------------------------------
+client/index.html: Vite HTML shell। client/vite.config.js: Vite dev/build configuration। client/src/main.jsx: React root, BrowserRouter, AuthContext ও PreferencesContext mount। client/src/App.jsx: public page, auth page, customer/partner/admin dashboard এবং not-found route map; RedirectDashboard role অনুযায়ী dashboard পাঠায়।
+client/src/context/AuthContext.jsx ও authContext.js: user/token localStorage state, login/logout, session restore/update। client/src/context/PreferencesContext.jsx ও preferencesContext.js: language/theme/preferences global state।
+
+১২. Frontend service ও utility
+-------------------------------
+client/src/services/api.js: একক fetch wrapper; VITE_API_URL যোগ, JSON বনাম FormData body, Bearer token, credentials, response parse এবং 401/refresh handling।
+auth.service.js: login/signup/refresh/logout। admin.service.js: admin-এর dashboard, users, partners, bookings, payments, contacts, site content, services, withdrawal API। customer.service.js: profile, partner, booking, payment, change request, chat/rating। partner.service.js: profile, order, availability, payment, wallet, payout, withdrawal, chat। siteContent.service.js: public/admin site content।
+utils/validators.js: frontend form validation। pagination.js: page size, current page, slice/total calculation। mediaUrl.js: relative upload path-কে API origin-এর সাথে যুক্ত করে। adminAuth.js: admin_token/admin_user save/remove। banglaUi.js: বাংলা UI label/text helper। serviceCatalog.js: service key/label normalize ও category map।
+
+১৩. Frontend reusable components
+---------------------------------
+Navbar.jsx: navigation, role-aware links, logged-in state/logout। Footer.jsx: footer links/contact। LoginLayout.jsx: login/signup shared visual layout। FormInput.jsx: label/input/error reusable field। Alert.jsx: success/error notification। Loading.jsx: loading indicator। ProtectedRoute.jsx: customer/partner authentication guard। AdminProtectedRoute.jsx: ADMIN guard। AppErrorBoundary.jsx: rendering error fallback।
+HomeHero.jsx: hero CTA/image; HomeContactSection.jsx: homepage contact area; TeamSection.jsx: team display; RoleCard.jsx: role selection card; MotionEnhancer.jsx: animation enhancement।
+DashboardInsights.jsx: summary cards/insight display; DashboardPagination.jsx: dashboard table pagination; DashboardChatWindow.jsx: booking chat, message এবং attachment UI।
+
+১৪. Frontend pages
+-------------------
+pages/public/home.jsx: hero, active services, reviews, why-choose-us, promo ও contact। about.jsx/about তথ্য; Services.jsx active service catalog; Contact.jsx contact form/support; Support.jsx support information; Team.jsx team; Privacy.jsx ও Terms.jsx policy; AuthLanding.jsx role/login entry; notFound.jsx 404।
+pages/customer/CustomerSignup.jsx ও CustomerLogin.jsx: customer form/auth। CustomerDashboard.jsx: profile, subscription, partner selection, booking form, payment/reference, status, chat, cancellation/rating। PartnerList.jsx: verified partner list/location/category filter।
+pages/partner/PartnerSignup.jsx: multipart profile/NID upload; PartnerLogin.jsx auth; PartnerDashboard.jsx availability, assigned jobs, work-payment, chat, rejection, wallet/payout/withdrawal।
+pages/admin/AdminLogin.jsx: admin auth; AdminDashboard.jsx: all administrative tabs/actions; AdminPartnerReview.jsx: pending partner-এর submitted data/document দেখে approve/reject।
+
+১৫. CSS ও assets
+-----------------
+client/src/assets/css/bootstrap.min.css: bundled Bootstrap base। style.css: common layout, responsive dashboard/table/theme/accessibility; footer.css: footer; homeHero.css: hero image/card stack; homeContactSection.css: contact section। image folder-এর card-1-home.jpg, card-2-home.jpg, card-3-home.jpg, hero image.jpg homepage visual asset; public/favicon.svg browser icon।
+
+১৬. Error, security ও quality notes
+------------------------------------
+Password কখনো plain text নয়; bcrypt hash। SQL parameterized। CORS allow-list। login ও submission rate limit। production-এ 500 response থেকে stack/error বাদ। upload size/type restriction। role এবং ownership check জরুরি—এক customer যেন অন্যের booking/chat না দেখতে পারে। Cloudinary credential env-এ থাকে; .env commit করা যাবে না। Render-এর ephemeral disk-এর কারণে production image-এর জন্য Cloudinary ব্যবহার করা উচিত।
+
+১৭. Viva প্রশ্ন ও সংক্ষিপ্ত উত্তর
+----------------------------------
+১) MistriChai কী? — Customer, verified partner ও admin-কে যুক্ত করা home-service booking platform।
+২) React কেন? — reusable component, state management ও SPA navigation।
+৩) Express route/controller/model আলাদা কেন? — endpoint, business logic ও SQL আলাদা রেখে maintainability বাড়াতে।
+৪) JWT কীভাবে কাজ করে? — server signed token দেয়; পরের request-এ middleware signature/expiry/role verify করে।
+৫) bcrypt কেন? — password one-way salted hash করে; database leak হলেও plaintext পাওয়া যায় না।
+৬) 401 ও 403 পার্থক্য? — 401 authentication ভুল/নেই; 403 পরিচয় আছে কিন্তু permission নেই।
+৭) MySQL কেন? — booking, user, payment-এর relational foreign-key consistency প্রয়োজন।
+৮) Foreign key কী? — দুই table-এর record relation ও referential integrity।
+৯) customer_profiles আলাদা table কেন? — user identity ও customer-specific address আলাদা, 1:1 profile design।
+১০) requested_partner ও assigned_partner আলাদা কেন? — customer-এর পছন্দ এবং admin-এর final assignment ভিন্ন হতে পারে।
+১১) status ENUM-এর সুবিধা? — invalid status database-এ ঢুকতে দেয় না এবং workflow স্পষ্ট।
+১২) Transaction wallet-এ কেন? — balance update ও ledger insert একসাথে সফল/ব্যর্থ করতে।
+১৩) Multer কী? — multipart/form-data file parse ও validation middleware।
+১৪) Cloudinary কেন? — persistent remote storage/CDN; Render local disk স্থায়ী নয়।
+১৫) CORS কী? — কোন frontend origin API call করতে পারবে তার নিয়ন্ত্রণ।
+১৬) parameterized query কীভাবে নিরাপদ? — user input SQL string-এর অংশ না হয়ে bound value হয়, injection কমে।
+১৭) site_settings-এ JSON কেন? — homepage-এর পরিবর্তনশীল content schema migration ছাড়াই section-wise রাখা যায়।
+১৮) soft delete service কেন? — পুরোনো service/key/reference রেখে inactive করা যায়; history নষ্ট হয় না।
+১৯) booking_change_requests কেন? — cancellation/rejection-এর কারণ ও admin decision audit trail রাখে।
+২০) wallet reserve কী? — partner পুরো balance তুলে না নিয়ে minimum 100 টাকা রেখে দেয়।
+২১) refresh token কী? — access token expire হলে নতুন access token নেওয়ার mechanism।
+২২) rate limiter কেন? — brute-force login ও spam submission কমাতে।
+২৩) React Context কী? — অনেক component-এ prop drilling ছাড়াই global auth/preferences share করা।
+২৪) FormData কখন? — file upload সহ multipart request-এ; সাধারণ data-তে JSON।
+২৫) polling বনাম WebSocket? — polling নির্দিষ্ট সময় পর fetch; WebSocket server push করে, real-time ও scalable হতে পারে।
+২৬) Vercel ও Render-এর ভূমিকা? — Vercel frontend, Render Node/Express backend host করে।
+২৭) Admin partner approve করলে কী হয়? — verification APPROVED, partner code/assignment eligibility তৈরি হয়।
+২৮) rating validation কেন? — শুধু নিজের completed booking-এ সীমিত 1-5 rating নিশ্চিত করতে।
+২৯) cascade delete-এর ঝুঁকি কী? — parent delete-এ child data মুছে যায়; production-এ retention/audit policy বিবেচনা দরকার।
+৩০) ভবিষ্যৎ উন্নয়ন কী? — real payment gateway, WebSocket, tests, audit log, Redis cache, migration tool ও fine-grained permission।
+
+শেষ কথা
+--------
+কোনো feature পরিবর্তন করলে সংশ্লিষ্ট route -> controller -> model/schema -> frontend service -> page/component এই chain পরীক্ষা করতে হবে। Database status বা permission বদলালে customer, partner ও admin—তিনটি dashboard-এর state transition এবং security ownership test করা আবশ্যক।

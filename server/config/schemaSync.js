@@ -222,15 +222,53 @@ async function ensurePartnerChangeAndQuoteApprovalSchema() {
   await db.query("UPDATE work_payments SET status='ADMIN_APPROVED' WHERE status='CUSTOMER_APPROVED'");
 }
 
+async function ensureReliabilitySchema() {
+  await db.query(`CREATE TABLE IF NOT EXISTS idempotency_keys (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, idempotency_key VARCHAR(120) NOT NULL,
+    scope VARCHAR(120) NOT NULL, entity_id VARCHAR(80) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_idempotency_scope (idempotency_key, scope)
+  )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, actor_user_id INT NULL, actor_role VARCHAR(20) NULL,
+    action VARCHAR(80) NOT NULL, entity_type VARCHAR(50) NOT NULL, entity_id VARCHAR(80) NULL,
+    before_json LONGTEXT NULL, after_json LONGTEXT NULL, request_id VARCHAR(100) NULL,
+    ip_address VARCHAR(64) NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_entity (entity_type, entity_id), INDEX idx_audit_actor (actor_user_id, created_at), INDEX idx_audit_created (created_at)
+  )`);
+  await db.query(`CREATE TABLE IF NOT EXISTS platform_commissions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, booking_id INT NOT NULL UNIQUE,
+    gross_amount DECIMAL(10,2) NOT NULL, commission_rate DECIMAL(5,4) NOT NULL DEFAULT 0.0400,
+    commission_amount DECIMAL(10,2) NOT NULL, partner_amount DECIMAL(10,2) NOT NULL,
+    status ENUM('EARNED','REFUNDED') NOT NULL DEFAULT 'EARNED', created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES service_bookings(id) ON DELETE CASCADE,
+    INDEX idx_commission_status (status, created_at)
+  )`);
+  const indexes = [
+    ["service_bookings", "idx_bookings_customer_status", "(customer_user_id, status, booked_at)"],
+    ["service_bookings", "idx_bookings_partner_status", "(assigned_partner_user_id, status, assigned_at)"],
+    ["service_bookings", "idx_bookings_status_created", "(status, booked_at)"],
+    ["payment_transactions", "idx_payments_booking_type", "(booking_id, transaction_type, status)"],
+    ["booking_messages", "idx_messages_booking_created", "(booking_id, created_at, id)"],
+    ["wallet_transactions", "idx_wallet_partner_status", "(partner_user_id, transaction_type, status, created_at)"],
+    ["booking_change_requests", "idx_change_requests_status", "(status, created_at)"]
+  ];
+  for (const [table, name, columns] of indexes) {
+    if (!(await indexExists(table, name))) await db.query(`CREATE INDEX ${name} ON ${table} ${columns}`);
+  }
+}
+
 async function syncSchema() {
   await db.query(`CREATE TABLE IF NOT EXISTS customer_subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY, customer_user_id INT NOT NULL,
-    plan_code ENUM('SIX_MONTHS','ONE_YEAR') NOT NULL, amount DECIMAL(10,2) NOT NULL,
+    plan_code ENUM('ONE_MONTH','SIX_MONTHS','ONE_YEAR') NOT NULL, amount DECIMAL(10,2) NOT NULL,
     starts_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, expires_at DATETIME NOT NULL,
     status ENUM('ACTIVE','EXPIRED','CANCELLED') NOT NULL DEFAULT 'ACTIVE',
     transaction_reference VARCHAR(100) NOT NULL UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
+  const subscriptionType = await getColumnType("customer_subscriptions", "plan_code");
+  if (!String(subscriptionType).includes("ONE_MONTH")) await db.query("ALTER TABLE customer_subscriptions MODIFY COLUMN plan_code ENUM('ONE_MONTH','SIX_MONTHS','ONE_YEAR') NOT NULL");
   await ensureWorkPaymentTable();
   await ensureChatAttachmentColumns();
   await ensureContactMessageColumns();
@@ -242,6 +280,7 @@ async function syncSchema() {
   await ensurePartnerSocialColumns();
   await ensurePartnerPayoutSchema();
   await ensurePartnerChangeAndQuoteApprovalSchema();
+  await ensureReliabilitySchema();
 }
 
 module.exports = { syncSchema };

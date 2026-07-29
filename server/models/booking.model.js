@@ -86,6 +86,58 @@ async function createPayment({
   );
 }
 
+async function createBookingIdempotent(data, idempotencyKey) {
+  if (!idempotencyKey) return createBooking(data);
+  const scope = `booking:${data.customer_user_id}`;
+  const [existing] = await pool.query("SELECT entity_id FROM idempotency_keys WHERE idempotency_key=? AND scope=? LIMIT 1", [idempotencyKey, scope]);
+  if (existing[0]) return Number(existing[0].entity_id);
+  const id = await createBooking(data);
+  try {
+    await pool.query("INSERT INTO idempotency_keys (idempotency_key, scope, entity_id) VALUES (?,?,?)", [idempotencyKey, scope, id]);
+  } catch (err) {
+    if (err.code !== "ER_DUP_ENTRY") throw err;
+    const [row] = await pool.query("SELECT entity_id FROM idempotency_keys WHERE idempotency_key=? AND scope=? LIMIT 1", [idempotencyKey, scope]);
+    return Number(row[0]?.entity_id || id);
+  }
+  return id;
+}
+
+async function createBookingWithPayment(data, payment, idempotencyKey) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const scope = `booking:${data.customer_user_id}`;
+    if (idempotencyKey) {
+      const [existing] = await connection.query("SELECT entity_id FROM idempotency_keys WHERE idempotency_key=? AND scope=? LIMIT 1 FOR UPDATE", [idempotencyKey, scope]);
+      if (existing[0]) { await connection.commit(); return Number(existing[0].entity_id); }
+    }
+    const [result] = await connection.query(
+      `INSERT INTO service_bookings
+       (booking_code, customer_user_id, requested_partner_user_id, category, problem_summary,
+        service_address, district, thana, ward_no, city_corp_or_union, preferred_date,
+        preferred_time, booking_fee, estimated_cash_amount, customer_note, status)
+       VALUES ('PENDING',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [data.customer_user_id, data.requested_partner_user_id || null, data.category, data.problem_summary,
+        data.service_address, data.district, data.thana, data.ward_no || null, data.city_corp_or_union || null,
+        data.preferred_date || null, data.preferred_time || null, Number(data.booking_fee || 0),
+        Number(data.estimated_cash_amount || 0), data.customer_note || null, data.initial_status || "PAYMENT_PENDING"]
+    );
+    const bookingCode = createBookingCode(result.insertId);
+    await connection.query("UPDATE service_bookings SET booking_code=? WHERE id=?", [bookingCode, result.insertId]);
+    await connection.query(
+      `INSERT INTO payment_transactions
+       (booking_id, payer_user_id, receiver_user_id, transaction_type, payment_method, transaction_reference, amount, status, note)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [result.insertId, payment.payer_user_id, payment.receiver_user_id || null, payment.transaction_type,
+        payment.payment_method || "ONLINE", payment.transaction_reference || null, Number(payment.amount || 0), payment.status || "PENDING", payment.note || null]
+    );
+    if (idempotencyKey) await connection.query("INSERT INTO idempotency_keys (idempotency_key, scope, entity_id) VALUES (?,?,?)", [idempotencyKey, scope, result.insertId]);
+    await connection.commit();
+    return result.insertId;
+  } catch (err) { await connection.rollback(); throw err; }
+  finally { connection.release(); }
+}
+
 async function bookingFeeReferenceExists(transactionReference) {
   const [rows] = await pool.query(
     `SELECT id FROM payment_transactions
@@ -474,6 +526,8 @@ async function approveWorkPayment(id, adminEmail) {
 
 module.exports = {
   createBooking,
+  createBookingIdempotent,
+  createBookingWithPayment,
   createPayment,
   bookingFeeReferenceExists,
   approveBookingPayment,

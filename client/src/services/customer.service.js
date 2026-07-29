@@ -15,6 +15,7 @@ export const CustomerService = {
   createBooking: (payload) =>
     apiFetch("/api/customer/bookings", {
       method: "POST",
+      headers: { "Idempotency-Key": typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `booking-${Date.now()}-${Math.random()}` },
       body: payload
     }),
   bookings: () => apiFetch("/api/customer/bookings"),

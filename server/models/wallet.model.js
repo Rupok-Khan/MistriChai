@@ -84,17 +84,24 @@ async function creditCompletedWork({ partnerUserId, bookingId, amount }) {
        AND transaction_type='CREDIT' LIMIT 1 FOR UPDATE`, [partnerUserId, bookingId]
     );
     if (existing.length) { await connection.rollback(); return false; }
+    const grossAmount = Number(amount || 0);
+    const commissionAmount = Math.round(grossAmount * 0.04 * 100) / 100;
+    const partnerAmount = Math.round((grossAmount - commissionAmount) * 100) / 100;
     await connection.query(
       `INSERT INTO partner_wallets (partner_user_id, balance) VALUES (?,?)
-       ON DUPLICATE KEY UPDATE balance=balance+VALUES(balance)`, [partnerUserId, Number(amount)]
+       ON DUPLICATE KEY UPDATE balance=balance+VALUES(balance)`, [partnerUserId, partnerAmount]
     );
     await connection.query(
       `INSERT INTO wallet_transactions (partner_user_id, booking_id, amount, transaction_type, status, note)
        VALUES (?,?,?,'CREDIT','COMPLETED','Final work payment credited after job completion')`,
-      [partnerUserId, bookingId, Number(amount)]
+      [partnerUserId, bookingId, partnerAmount]
+    );
+    await connection.query(
+      `INSERT INTO platform_commissions (booking_id, gross_amount, commission_rate, commission_amount, partner_amount)
+       VALUES (?,?,?,?,?)`, [bookingId, grossAmount, 0.04, commissionAmount, partnerAmount]
     );
     await connection.commit();
-    return true;
+  return true;
   } catch (err) { await connection.rollback(); throw err; }
   finally { connection.release(); }
 }
@@ -122,11 +129,14 @@ async function listWithdrawalRequests() {
 }
 
 async function payWithdrawal({ withdrawalId, adminNote }) {
-  const [rows] = await pool.query(
+  const connection = await pool.getConnection();
+  try {
+  await connection.beginTransaction();
+  const [rows] = await connection.query(
     `SELECT id, partner_user_id, amount, status
      FROM wallet_transactions
      WHERE id = ? AND transaction_type = 'WITHDRAW_REQUEST'
-     LIMIT 1`,
+     LIMIT 1 FOR UPDATE`,
     [withdrawalId]
   );
 
@@ -138,32 +148,35 @@ async function payWithdrawal({ withdrawalId, adminNote }) {
     throw new Error("Withdrawal request already processed");
   }
 
-  const [walletRows] = await pool.query("SELECT balance FROM partner_wallets WHERE partner_user_id=? LIMIT 1", [item.partner_user_id]);
+  const [walletRows] = await connection.query("SELECT balance FROM partner_wallets WHERE partner_user_id=? LIMIT 1 FOR UPDATE", [item.partner_user_id]);
   const balance = Number(walletRows[0]?.balance || 0);
   if (balance - Number(item.amount) < 100) {
     throw new Error("Withdrawal cannot be paid because the wallet must retain at least 100 taka");
   }
 
-  await pool.query(
+  await connection.query(
     "UPDATE partner_wallets SET balance = balance - ? WHERE partner_user_id = ?",
     [Number(item.amount), item.partner_user_id]
   );
 
-  await pool.query(
+  await connection.query(
     `UPDATE wallet_transactions
      SET status = 'COMPLETED', note = CONCAT(COALESCE(note, ''), ?)
      WHERE id = ?`,
     [adminNote ? ` | Admin: ${adminNote}` : "", withdrawalId]
   );
 
-  await pool.query(
+  await connection.query(
     `INSERT INTO wallet_transactions
      (partner_user_id, booking_id, amount, transaction_type, status, note)
      VALUES (?, NULL, ?, 'WITHDRAW_PAID', 'COMPLETED', ?)`,
     [item.partner_user_id, Number(item.amount), adminNote || "Withdrawal paid by admin"]
   );
 
+  await connection.commit();
   return item;
+  } catch (err) { await connection.rollback(); throw err; }
+  finally { connection.release(); }
 }
 
 module.exports = {

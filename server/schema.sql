@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
 CREATE TABLE IF NOT EXISTS customer_subscriptions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   customer_user_id INT NOT NULL,
-  plan_code ENUM('SIX_MONTHS','ONE_YEAR') NOT NULL,
+  plan_code ENUM('ONE_MONTH','SIX_MONTHS','ONE_YEAR') NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
   starts_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at DATETIME NOT NULL,
@@ -261,4 +261,28 @@ CREATE TABLE IF NOT EXISTS contact_message_replies (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_contact_reply_message
     FOREIGN KEY (contact_message_id) REFERENCES contact_messages(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY, idempotency_key VARCHAR(120) NOT NULL,
+  scope VARCHAR(120) NOT NULL, entity_id VARCHAR(80) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_idempotency_scope (idempotency_key, scope)
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY, actor_user_id INT NULL, actor_role VARCHAR(20) NULL,
+  action VARCHAR(80) NOT NULL, entity_type VARCHAR(50) NOT NULL, entity_id VARCHAR(80) NULL,
+  before_json LONGTEXT NULL, after_json LONGTEXT NULL, request_id VARCHAR(100) NULL,
+  ip_address VARCHAR(64) NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_entity (entity_type, entity_id), INDEX idx_audit_actor (actor_user_id, created_at), INDEX idx_audit_created (created_at)
+);
+
+CREATE TABLE IF NOT EXISTS platform_commissions (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY, booking_id INT NOT NULL UNIQUE,
+  gross_amount DECIMAL(10,2) NOT NULL, commission_rate DECIMAL(5,4) NOT NULL DEFAULT 0.0400,
+  commission_amount DECIMAL(10,2) NOT NULL, partner_amount DECIMAL(10,2) NOT NULL,
+  status ENUM('EARNED','REFUNDED') NOT NULL DEFAULT 'EARNED', created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (booking_id) REFERENCES service_bookings(id) ON DELETE CASCADE,
+  INDEX idx_commission_status (status, created_at)
 );
