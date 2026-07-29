@@ -110,6 +110,7 @@ export default function AdminDashboard() {
   const [siteEditor, setSiteEditor] = useState(null);
   const [heroImageFile, setHeroImageFile] = useState(null);
   const [aboutImageFiles, setAboutImageFiles] = useState({ hero: null, story: null, customer: null, partner: null });
+  const [servicesPageImageFiles, setServicesPageImageFiles] = useState({ heroMain: null, heroSmallOne: null, heroSmallTwo: null, professional: null });
   const [promoImageFiles, setPromoImageFiles] = useState({ left: null, right: null });
   const [contacts, setContacts] = useState([]);
   const [replyForm, setReplyForm] = useState({});
@@ -365,7 +366,7 @@ export default function AdminDashboard() {
       setSiteSaving(true);
       setErr("");
       let payload = siteForm;
-      if (heroImageFile || promoImageFiles.left || promoImageFiles.right || aboutImageFiles.hero || aboutImageFiles.story || aboutImageFiles.customer || aboutImageFiles.partner) {
+      if (heroImageFile || promoImageFiles.left || promoImageFiles.right || aboutImageFiles.hero || aboutImageFiles.story || aboutImageFiles.customer || aboutImageFiles.partner || servicesPageImageFiles.heroMain || servicesPageImageFiles.heroSmallOne || servicesPageImageFiles.heroSmallTwo || servicesPageImageFiles.professional) {
         payload = new FormData();
         payload.append("settings", JSON.stringify(siteForm));
         if (heroImageFile) payload.append("hero_image", heroImageFile);
@@ -375,6 +376,10 @@ export default function AdminDashboard() {
         if (aboutImageFiles.story) payload.append("about_story_image", aboutImageFiles.story);
         if (aboutImageFiles.customer) payload.append("about_customer_image", aboutImageFiles.customer);
         if (aboutImageFiles.partner) payload.append("about_partner_image", aboutImageFiles.partner);
+        if (servicesPageImageFiles.heroMain) payload.append("services_hero_main_image", servicesPageImageFiles.heroMain);
+        if (servicesPageImageFiles.heroSmallOne) payload.append("services_hero_small_one_image", servicesPageImageFiles.heroSmallOne);
+        if (servicesPageImageFiles.heroSmallTwo) payload.append("services_hero_small_two_image", servicesPageImageFiles.heroSmallTwo);
+        if (servicesPageImageFiles.professional) payload.append("services_professional_image", servicesPageImageFiles.professional);
       }
       const res = await AdminService.updateSiteContent(payload);
       const updatedSettings = res.data || {};
@@ -382,6 +387,7 @@ export default function AdminDashboard() {
       setDashboard((prev) => ({ ...prev, siteSettings: updatedSettings }));
       setHeroImageFile(null);
       setAboutImageFiles({ hero: null, story: null, customer: null, partner: null });
+      setServicesPageImageFiles({ heroMain: null, heroSmallOne: null, heroSmallTwo: null, professional: null });
       setPromoImageFiles({ left: null, right: null });
     } catch (e) {
       setErr(e.message);
@@ -734,6 +740,19 @@ export default function AdminDashboard() {
                         ) : (
                           <input className="form-control" placeholder={placeholder} value={siteForm.servicesPage?.[field] || ""} onChange={(e) => setSiteForm((p) => ({ ...p, servicesPage: { ...p.servicesPage, [field]: e.target.value } }))} />
                         )}
+                      </div>
+                    ))}
+                    {[
+                      ["heroMain", "services-hero-main-image", "Hero main image", "Large image in the Services page hero collage.", "heroMainImageUrl"],
+                      ["heroSmallOne", "services-hero-small-one-image", "Hero small image one", "Small collage image, usually plumbing/electrical work.", "heroSmallImageOneUrl"],
+                      ["heroSmallTwo", "services-hero-small-two-image", "Hero small image two", "Small collage image, usually repair/maintenance work.", "heroSmallImageTwoUrl"],
+                      ["professional", "services-professional-image", "Find Professionals section image", "Image beside the Service Professionals section.", "professionalImageUrl"]
+                    ].map(([stateKey, inputId, label, helpText, urlKey]) => (
+                      <div className="col-12 col-md-6" key={stateKey}>
+                        <label className="form-label" htmlFor={inputId}>{label}</label>
+                        <input id={inputId} type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setServicesPageImageFiles((previous) => ({ ...previous, [stateKey]: e.target.files?.[0] || null }))} />
+                        <div className="small-muted mt-1">{helpText}</div>
+                        {(servicesPageImageFiles[stateKey] || siteForm.servicesPage?.[urlKey]) && <img className="site-hero-image-preview mt-3" src={servicesPageImageFiles[stateKey] ? URL.createObjectURL(servicesPageImageFiles[stateKey]) : siteForm.servicesPage[urlKey].startsWith("http") ? siteForm.servicesPage[urlKey] : `${API_BASE}${siteForm.servicesPage[urlKey]}`} alt={`${label} preview`} />}
                       </div>
                     ))}
                   </div>

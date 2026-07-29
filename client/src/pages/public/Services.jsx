@@ -107,6 +107,13 @@ export default function Services() {
     document.getElementById("all-services")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const resolvePageImage = (url, fallback) => {
+    const uploaded = String(url || "").trim();
+    if (!uploaded) return fallback;
+    if (uploaded.startsWith("http://") || uploaded.startsWith("https://")) return uploaded;
+    return `${API_BASE}${uploaded.startsWith("/") ? "" : "/"}${uploaded}`;
+  };
+
   const copy = {
     heroLabel: pageContent.heroLabel || "HOME SERVICES",
     heroTitle: pageContent.heroTitle || "Professional Help for Your Home, Made Simple.",
@@ -160,9 +167,9 @@ export default function Services() {
             </div>
           </div>
           <div className="services-hero-collage services-reveal">
-            <img className="services-collage-main" src={heroImg} alt="MistriChai professional home-service support" />
-            <img className="services-collage-small services-collage-one" src={cardTwoImg} alt="Plumbing service support" />
-            <img className="services-collage-small services-collage-two" src={cardOneImg} alt="Home repair service support" />
+            <img className="services-collage-main" src={resolvePageImage(pageContent.heroMainImageUrl, heroImg)} alt="MistriChai professional home-service support" />
+            <img className="services-collage-small services-collage-one" src={resolvePageImage(pageContent.heroSmallImageOneUrl, cardTwoImg)} alt="Plumbing service support" />
+            <img className="services-collage-small services-collage-two" src={resolvePageImage(pageContent.heroSmallImageTwoUrl, cardOneImg)} alt="Home repair service support" />
           </div>
         </div>
       </section>
@@ -298,7 +305,7 @@ export default function Services() {
       <section className="services-section">
         <div className="container services-split services-pro-section">
           <div className="services-pro-image">
-            <img src={cardThreeImg} alt="Approved MistriChai service professional working in a home" />
+            <img src={resolvePageImage(pageContent.professionalImageUrl, cardThreeImg)} alt="Approved MistriChai service professional working in a home" />
           </div>
           <div>
             <span className="services-kicker">Service Professionals</span>

@@ -28,7 +28,11 @@ const DEFAULT_SITE_SETTINGS = {
     supportText: "Tell our support team what you need. We'll help you understand the available options on MistriChai.",
     finalLabel: "GET STARTED",
     finalTitle: "Your Home Needs Help. MistriChai Makes Finding It Easier.",
-    finalText: "Choose a service, connect with an approved professional, and start your booking today."
+    finalText: "Choose a service, connect with an approved professional, and start your booking today.",
+    heroMainImageUrl: "",
+    heroSmallImageOneUrl: "",
+    heroSmallImageTwoUrl: "",
+    professionalImageUrl: ""
   },
   loginPages: {
     customer: {

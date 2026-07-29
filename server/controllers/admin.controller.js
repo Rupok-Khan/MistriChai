@@ -535,6 +535,10 @@ exports.updateSiteSettings = async (req, res, next) => {
     const aboutStoryImage = req.files?.about_story_image?.[0];
     const aboutCustomerImage = req.files?.about_customer_image?.[0];
     const aboutPartnerImage = req.files?.about_partner_image?.[0];
+    const servicesHeroMainImage = req.files?.services_hero_main_image?.[0];
+    const servicesHeroSmallOneImage = req.files?.services_hero_small_one_image?.[0];
+    const servicesHeroSmallTwoImage = req.files?.services_hero_small_two_image?.[0];
+    const servicesProfessionalImage = req.files?.services_professional_image?.[0];
     const previous = uploadedFiles.length ? await SiteSettings.getAllSettings() : null;
     if (heroImage) {
       payload = {
@@ -564,6 +568,18 @@ exports.updateSiteSettings = async (req, res, next) => {
         }
       };
     }
+    if (servicesHeroMainImage || servicesHeroSmallOneImage || servicesHeroSmallTwoImage || servicesProfessionalImage) {
+      payload = {
+        ...payload,
+        servicesPage: {
+          ...(payload.servicesPage || {}),
+          ...(servicesHeroMainImage ? { heroMainImageUrl: toSiteImageUrl(servicesHeroMainImage) } : {}),
+          ...(servicesHeroSmallOneImage ? { heroSmallImageOneUrl: toSiteImageUrl(servicesHeroSmallOneImage) } : {}),
+          ...(servicesHeroSmallTwoImage ? { heroSmallImageTwoUrl: toSiteImageUrl(servicesHeroSmallTwoImage) } : {}),
+          ...(servicesProfessionalImage ? { professionalImageUrl: toSiteImageUrl(servicesProfessionalImage) } : {})
+        }
+      };
+    }
     const data = await SiteSettings.updateAllSettings(payload);
     if (heroImage) deleteUploadedSiteImage(previous?.home?.heroImageUrl);
     if (promoLeftImage) deleteUploadedSiteImage(previous?.promo?.leftImageUrl);
@@ -572,6 +588,10 @@ exports.updateSiteSettings = async (req, res, next) => {
     if (aboutStoryImage) deleteUploadedSiteImage(previous?.about?.storyImageUrl);
     if (aboutCustomerImage) deleteUploadedSiteImage(previous?.about?.customerImageUrl);
     if (aboutPartnerImage) deleteUploadedSiteImage(previous?.about?.partnerImageUrl);
+    if (servicesHeroMainImage) deleteUploadedSiteImage(previous?.servicesPage?.heroMainImageUrl);
+    if (servicesHeroSmallOneImage) deleteUploadedSiteImage(previous?.servicesPage?.heroSmallImageOneUrl);
+    if (servicesHeroSmallTwoImage) deleteUploadedSiteImage(previous?.servicesPage?.heroSmallImageTwoUrl);
+    if (servicesProfessionalImage) deleteUploadedSiteImage(previous?.servicesPage?.professionalImageUrl);
     res.json({ message: "Site content updated", data });
   } catch (err) {
     uploadedFiles.forEach((file) => deleteUploadedSiteImage(toSiteImageUrl(file)));
