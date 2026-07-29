@@ -31,7 +31,9 @@ const FIELD_DIRECTORIES = {
   promo_left_image: "site",
   promo_right_image: "site",
   about_hero_image: "site",
-  about_story_image: "site"
+  about_story_image: "site",
+  about_customer_image: "site",
+  about_partner_image: "site"
 };
 
 function ensureDir(dirPath) {
@@ -59,7 +61,7 @@ const localStorage = multer.diskStorage({
     if (file.fieldname === "attachment") return cb(null, chatDir);
     if (file.fieldname === "proof") return cb(null, cancellationDir);
     if (file.fieldname === "service_card_image") return cb(null, serviceDir);
-    if (["hero_image", "promo_left_image", "promo_right_image", "about_hero_image", "about_story_image"].includes(file.fieldname)) return cb(null, siteDir);
+    if (["hero_image", "promo_left_image", "promo_right_image", "about_hero_image", "about_story_image", "about_customer_image", "about_partner_image"].includes(file.fieldname)) return cb(null, siteDir);
     cb(null, nidDir);
   },
   filename: (req, file, cb) => {

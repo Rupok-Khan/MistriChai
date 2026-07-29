@@ -109,7 +109,7 @@ export default function AdminDashboard() {
   const [siteSaving, setSiteSaving] = useState(false);
   const [siteEditor, setSiteEditor] = useState(null);
   const [heroImageFile, setHeroImageFile] = useState(null);
-  const [aboutImageFiles, setAboutImageFiles] = useState({ hero: null, story: null });
+  const [aboutImageFiles, setAboutImageFiles] = useState({ hero: null, story: null, customer: null, partner: null });
   const [promoImageFiles, setPromoImageFiles] = useState({ left: null, right: null });
   const [contacts, setContacts] = useState([]);
   const [replyForm, setReplyForm] = useState({});
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
       setSiteSaving(true);
       setErr("");
       let payload = siteForm;
-      if (heroImageFile || promoImageFiles.left || promoImageFiles.right || aboutImageFiles.hero || aboutImageFiles.story) {
+      if (heroImageFile || promoImageFiles.left || promoImageFiles.right || aboutImageFiles.hero || aboutImageFiles.story || aboutImageFiles.customer || aboutImageFiles.partner) {
         payload = new FormData();
         payload.append("settings", JSON.stringify(siteForm));
         if (heroImageFile) payload.append("hero_image", heroImageFile);
@@ -373,13 +373,15 @@ export default function AdminDashboard() {
         if (promoImageFiles.right) payload.append("promo_right_image", promoImageFiles.right);
         if (aboutImageFiles.hero) payload.append("about_hero_image", aboutImageFiles.hero);
         if (aboutImageFiles.story) payload.append("about_story_image", aboutImageFiles.story);
+        if (aboutImageFiles.customer) payload.append("about_customer_image", aboutImageFiles.customer);
+        if (aboutImageFiles.partner) payload.append("about_partner_image", aboutImageFiles.partner);
       }
       const res = await AdminService.updateSiteContent(payload);
       const updatedSettings = res.data || {};
       setSiteForm(updatedSettings);
       setDashboard((prev) => ({ ...prev, siteSettings: updatedSettings }));
       setHeroImageFile(null);
-      setAboutImageFiles({ hero: null, story: null });
+      setAboutImageFiles({ hero: null, story: null, customer: null, partner: null });
       setPromoImageFiles({ left: null, right: null });
     } catch (e) {
       setErr(e.message);
@@ -832,6 +834,18 @@ export default function AdminDashboard() {
                       <input id="about-story-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setAboutImageFiles((previous) => ({ ...previous, story: e.target.files?.[0] || null }))} />
                       <div className="small-muted mt-1">Used in the Our Story section.</div>
                       {(aboutImageFiles.story || siteForm.about?.storyImageUrl) && <img className="site-hero-image-preview mt-3" src={aboutImageFiles.story ? URL.createObjectURL(aboutImageFiles.story) : siteForm.about.storyImageUrl.startsWith("http") ? siteForm.about.storyImageUrl : `${API_BASE}${siteForm.about.storyImageUrl}`} alt="About story preview" />}
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label" htmlFor="about-customer-image">About customer/community image</label>
+                      <input id="about-customer-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setAboutImageFiles((previous) => ({ ...previous, customer: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">Used in the Need a Professional card.</div>
+                      {(aboutImageFiles.customer || siteForm.about?.customerImageUrl) && <img className="site-hero-image-preview mt-3" src={aboutImageFiles.customer ? URL.createObjectURL(aboutImageFiles.customer) : siteForm.about.customerImageUrl.startsWith("http") ? siteForm.about.customerImageUrl : `${API_BASE}${siteForm.about.customerImageUrl}`} alt="About customer preview" />}
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label" htmlFor="about-partner-image">About partner/community image</label>
+                      <input id="about-partner-image" type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" onChange={(e) => setAboutImageFiles((previous) => ({ ...previous, partner: e.target.files?.[0] || null }))} />
+                      <div className="small-muted mt-1">Used in the Have Professional Skills card.</div>
+                      {(aboutImageFiles.partner || siteForm.about?.partnerImageUrl) && <img className="site-hero-image-preview mt-3" src={aboutImageFiles.partner ? URL.createObjectURL(aboutImageFiles.partner) : siteForm.about.partnerImageUrl.startsWith("http") ? siteForm.about.partnerImageUrl : `${API_BASE}${siteForm.about.partnerImageUrl}`} alt="About partner preview" />}
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Story title</label>

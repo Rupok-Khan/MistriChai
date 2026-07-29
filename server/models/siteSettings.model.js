@@ -130,6 +130,8 @@ const DEFAULT_SITE_SETTINGS = {
       "When something needs repairing or maintaining at home, finding the right person for the job can be difficult. MistriChai was created to make that experience simpler through one organized service platform.",
     heroImageUrl: "",
     storyImageUrl: "",
+    customerImageUrl: "",
+    partnerImageUrl: "",
     missionTitle: "Mission",
     missionText: "Make local technician services safe, fast, and accessible for everyone.",
     visionTitle: "Vision",

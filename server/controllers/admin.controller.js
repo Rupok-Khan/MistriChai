@@ -533,6 +533,8 @@ exports.updateSiteSettings = async (req, res, next) => {
     const promoRightImage = req.files?.promo_right_image?.[0];
     const aboutHeroImage = req.files?.about_hero_image?.[0];
     const aboutStoryImage = req.files?.about_story_image?.[0];
+    const aboutCustomerImage = req.files?.about_customer_image?.[0];
+    const aboutPartnerImage = req.files?.about_partner_image?.[0];
     const previous = uploadedFiles.length ? await SiteSettings.getAllSettings() : null;
     if (heroImage) {
       payload = {
@@ -550,13 +552,15 @@ exports.updateSiteSettings = async (req, res, next) => {
         }
       };
     }
-    if (aboutHeroImage || aboutStoryImage) {
+    if (aboutHeroImage || aboutStoryImage || aboutCustomerImage || aboutPartnerImage) {
       payload = {
         ...payload,
         about: {
           ...(payload.about || {}),
           ...(aboutHeroImage ? { heroImageUrl: toSiteImageUrl(aboutHeroImage) } : {}),
-          ...(aboutStoryImage ? { storyImageUrl: toSiteImageUrl(aboutStoryImage) } : {})
+          ...(aboutStoryImage ? { storyImageUrl: toSiteImageUrl(aboutStoryImage) } : {}),
+          ...(aboutCustomerImage ? { customerImageUrl: toSiteImageUrl(aboutCustomerImage) } : {}),
+          ...(aboutPartnerImage ? { partnerImageUrl: toSiteImageUrl(aboutPartnerImage) } : {})
         }
       };
     }
@@ -566,6 +570,8 @@ exports.updateSiteSettings = async (req, res, next) => {
     if (promoRightImage) deleteUploadedSiteImage(previous?.promo?.rightImageUrl);
     if (aboutHeroImage) deleteUploadedSiteImage(previous?.about?.heroImageUrl);
     if (aboutStoryImage) deleteUploadedSiteImage(previous?.about?.storyImageUrl);
+    if (aboutCustomerImage) deleteUploadedSiteImage(previous?.about?.customerImageUrl);
+    if (aboutPartnerImage) deleteUploadedSiteImage(previous?.about?.partnerImageUrl);
     res.json({ message: "Site content updated", data });
   } catch (err) {
     uploadedFiles.forEach((file) => deleteUploadedSiteImage(toSiteImageUrl(file)));

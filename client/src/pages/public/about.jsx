@@ -260,7 +260,7 @@ export default function About() {
           </div>
           <div className="about-audience-grid">
             <article className="about-audience-card about-audience-customer about-reveal">
-              <img src={customerImage} alt="Customer home-service booking support" />
+              <img src={resolveContentImage(content?.customerImageUrl, customerImage)} alt="Customer home-service booking support" />
               <div>
                 <h3>Need a Professional?</h3>
                 <p>Explore available home services and find approved professionals for your service needs.</p>
@@ -276,7 +276,7 @@ export default function About() {
               </div>
             </article>
             <article className="about-audience-card about-audience-partner about-reveal">
-              <img src={partnerImage} alt="Service professional working with tools" />
+              <img src={resolveContentImage(content?.partnerImageUrl, partnerImage)} alt="Service professional working with tools" />
               <div>
                 <h3>Have Professional Skills?</h3>
                 <p>Join the MistriChai Partner network and use your skills to access eligible service opportunities.</p>

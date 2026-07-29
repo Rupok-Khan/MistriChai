@@ -38,7 +38,9 @@ router.put("/site-content", adminAuth, upload.fields([
   { name: "promo_left_image", maxCount: 1 },
   { name: "promo_right_image", maxCount: 1 },
   { name: "about_hero_image", maxCount: 1 },
-  { name: "about_story_image", maxCount: 1 }
+  { name: "about_story_image", maxCount: 1 },
+  { name: "about_customer_image", maxCount: 1 },
+  { name: "about_partner_image", maxCount: 1 }
 ]), Admin.updateSiteSettings);
 router.get("/services", adminAuth, Admin.listServices);
 router.post("/services", adminAuth, upload.single("service_card_image"), Admin.createService);
