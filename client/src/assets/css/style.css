@@ -2274,4 +2274,16 @@ html:not([data-theme="dark"]) .dashboard-page .insight-bar-column small { color:
 .pricing-list li::before { content:"✓"; color:#0c6b50; font-weight:700; margin-right:.55rem; }
 .pricing-plan-card { border:1px solid rgba(20,70,60,.15); border-radius:14px; background:#fff; padding:1rem; display:flex; flex-direction:column; gap:.25rem; }
 .pricing-plan-card strong { color:#0c6b50; font-size:1.4rem; }.pricing-plan-card small { color:#6d7d77; }.pricing-plan-card.selected { border:2px solid #0c6b50; background:#eff9f4; }
+/* Make every native required field visibly clear without duplicating markup. */
+label.form-label:has(+ input[required])::after,
+label.form-label:has(+ textarea[required])::after,
+label.form-label:has(+ select[required])::after,
+label.form-label:has(+ div input[required])::after,
+label.form-label:has(+ div textarea[required])::after,
+label.form-label:has(+ div select[required])::after {
+  content: " *";
+  color: #dc3545;
+  font-weight: 800;
+}
+.required-hint { color:#dc3545; font-size:.8rem; }
 @media (max-width:576px) { .booking-stepper { justify-content:space-between; gap:.35rem; } .booking-step { font-size:.72rem; flex-direction:column; } }

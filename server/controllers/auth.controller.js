@@ -136,8 +136,8 @@ exports.partnerSignup = async (req, res) => {
     const nidFront = req.files?.nid_front_photo?.[0];
     const nidBack = req.files?.nid_back_photo?.[0];
 
-    if (![first_name, last_name, mobile, nid_number, district, thana, technician_category].every((value) => String(value || "").trim())) {
-      return res.status(400).json({ message: "Required partner information is missing" });
+    if (![first_name, last_name, mobile, nid_address, father_name, mother_name, nid_number, district, thana, ward_no, city_corp_or_union, technician_category, working_start_time, working_end_time].every((value) => String(value || "").trim())) {
+      return res.status(400).json({ message: "All personal, NID, area, category, and working-time fields are required" });
     }
     if (!password || String(password).length < 8 || String(password).length > 128) {
       return res.status(400).json({ message: "Password must be between 8 and 128 characters" });
